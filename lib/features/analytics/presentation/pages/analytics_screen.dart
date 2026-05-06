@@ -1,9 +1,10 @@
+import 'package:finance_app/core/theme/colors/theme_custom.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:finance_app/features/transactions/presentation/providers/transaction_provider.dart';
-import 'package:finance_app/shared/theme/app_theme.dart';
-import 'package:finance_app/features/transactions/data/models/transaction.dart';
+ import 'package:finance_app/features/transactions/data/models/transaction.dart';
+import '../../../../core/theme/colors/app_colors.dart';
 
 class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key});
@@ -17,7 +18,7 @@ class AnalyticsScreen extends StatelessWidget {
           final txs = provider.currentMonthTransactions;
           final expenseMap = provider.expenseByPlace;
           final totalExpense = provider.totalExpense;
-          final colors = Theme.of(context).extension<AppColors>()!;
+          final colors = Theme.of(context).extension<AppThemeColors>()!;
           final f = NumberFormat('#,##0.00', 'ru_RU');
 
           return ListView(
@@ -36,15 +37,15 @@ class AnalyticsScreen extends StatelessWidget {
                   _SummaryCard(
                     label: 'Доходы',
                     value: '${f.format(provider.totalIncome)} UZS',
-                    color: colors.income,
-                    bgColor: colors.incomeLight,
+                    color: colors.text,
+                    bgColor: colors.text,
                   ),
                   const SizedBox(width: 12),
                   _SummaryCard(
                     label: 'Расходы',
                     value: '${f.format(provider.totalExpense)} UZS',
-                    color: colors.expense,
-                    bgColor: colors.expenseLight,
+                    color: colors.text,
+                    bgColor: colors.text,
                   ),
                 ],
               ),
@@ -65,8 +66,8 @@ class AnalyticsScreen extends StatelessWidget {
                     place: entry.key,
                     amount: entry.value,
                     percent: percent.toDouble(),
-                    color: colors.expense,
-                    bgColor: colors.expenseLight,
+                    color: colors.textGrey,
+                    bgColor: colors.textGrey,
                     f: f,
                   );
                 }),
@@ -232,7 +233,6 @@ class _AnalyticsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isIncome = tx.type == TransactionType.income;
     final colors = Theme.of(context).extension<AppColors>()!;
-    final color = isIncome ? colors.income : colors.expense;
     final sign = isIncome ? '+' : '-';
 
     return Container(
@@ -263,7 +263,7 @@ class _AnalyticsTile extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: color,
+              color: Colors.white,
             ),
           ),
         ],

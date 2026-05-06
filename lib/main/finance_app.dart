@@ -3,8 +3,8 @@ import 'package:finance_app/app/app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/theme/app_theme.dart';
 import '../features/transactions/presentation/providers/transaction_provider.dart';
-import '../shared/theme/app_theme.dart';
 
 
 class FinanceApp extends StatelessWidget {

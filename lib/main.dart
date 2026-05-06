@@ -1,5 +1,6 @@
 import 'package:finance_app/services/database_helper.dart' show DatabaseHelper;
 
+import 'core/theme/app_theme.dart';
 import 'features/share_import/presentation/bloc/share_intent_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,7 +10,6 @@ import 'shared/providers/theme_provider.dart';
 import 'features/transactions/presentation/providers/transaction_provider.dart';
 import 'features/kanban/presentation/providers/kanban_provider.dart';
 import 'app/app_shell.dart';
-import 'shared/theme/app_theme.dart';
 import 'features/share_import/domain/usecases/share_intent_usecases.dart';
 import 'features/share_import/data/repositories/share_intent_repository_impl.dart';
 import 'features/share_import/data/datasources/share_intent_service.dart';
