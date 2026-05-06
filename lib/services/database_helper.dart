@@ -1,8 +1,8 @@
 import 'dart:ui';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import '../models/transaction.dart' as tx;
-import '../models/kanban_model.dart';
+import 'package:finance_app/features/transactions/data/models/transaction.dart' as tx;
+import 'package:finance_app/features/kanban/data/models/kanban_model.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -93,7 +93,7 @@ class DatabaseHelper {
     ''');
   }
 
-  // Transactions
+
   Future<void> insertTransaction(tx.Transaction transaction) async {
     final db = await database;
     await db.insert('transactions', transaction.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);

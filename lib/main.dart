@@ -1,29 +1,29 @@
+import 'package:finance_app/services/database_helper.dart' show DatabaseHelper;
+
+import 'features/share_import/presentation/bloc/share_intent_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
-import 'providers/transaction_provider.dart';
-import 'providers/kanban_provider.dart';
-import 'providers/theme_provider.dart';
-import 'screens/main_screen.dart';
-import 'theme/app_theme.dart';
-import 'presentation/bloc/share_intent_bloc.dart';
-import 'domain/usecases/share_intent_usecases.dart';
-import 'data/repositories/share_intent_repository_impl.dart';
-import 'data/datasources/share_intent_service.dart';
-import 'services/database_helper.dart';
+import 'shared/providers/theme_provider.dart';
+import 'features/transactions/presentation/providers/transaction_provider.dart';
+import 'features/kanban/presentation/providers/kanban_provider.dart';
+import 'app/app_shell.dart';
+import 'shared/theme/app_theme.dart';
+import 'features/share_import/domain/usecases/share_intent_usecases.dart';
+import 'features/share_import/data/repositories/share_intent_repository_impl.dart';
+import 'features/share_import/data/datasources/share_intent_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('ru_RU', '');
+  await initializeDateFormatting('ru_RU', null);
   await ShareIntentService.initialize();
 
-  // Инициализация зависимостей для BLoC
   final shareIntentService = ShareIntentService();
   final databaseHelper = DatabaseHelper.instance;
   final shareIntentRepository = ShareIntentRepositoryImpl(
     shareIntentService: shareIntentService,
-    databaseHelper: databaseHelper,
+    databaseHelper: databaseHelper ,
   );
 
   final getInitialSharedText = GetInitialSharedTextUseCase(shareIntentRepository);
@@ -75,7 +75,7 @@ class HumoTrackerApp extends StatelessWidget {
         builder: (context, themeProvider, child) {
           return MaterialApp(
             title: 'HUMO Finance Tracker',
-            theme: themeProvider.isDark ? AppTheme.darkTheme : AppTheme.lightTheme,
+            theme: themeProvider.isDark ? AppTheme.dark : AppTheme.light,
             home: const MainScreen(),
             debugShowCheckedModeBanner: false,
           );

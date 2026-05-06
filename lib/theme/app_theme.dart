@@ -21,11 +21,9 @@ class AppTheme {
         secondary: incomeColor,
         error: expenseColor,
         surface: cardColor,
-        background: backgroundColor,
         onPrimary: textPrimary,
         onSecondary: textPrimary,
         onSurface: textPrimary,
-        onBackground: textPrimary,
         onError: textPrimary,
       ),
       appBarTheme: const AppBarTheme(
@@ -59,16 +57,14 @@ class AppTheme {
       primaryColor: primaryColor,
       scaffoldBackgroundColor: Colors.white,
       cardColor: Colors.white,
-      colorScheme: ColorScheme.light(
+      colorScheme: const ColorScheme.light(
         primary: primaryColor,
         secondary: incomeColor,
         error: expenseColor,
         surface: Colors.white,
-        background: Colors.white,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onSurface: Colors.black,
-        onBackground: Colors.black,
         onError: Colors.white,
       ),
       appBarTheme: const AppBarTheme(

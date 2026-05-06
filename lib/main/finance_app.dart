@@ -1,10 +1,11 @@
 
+import 'package:finance_app/app/app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/provider/transaction_provider.dart';
-import '../core/theme/app_theme.dart';
-import '../features/home/home_page.dart';
+import '../features/transactions/presentation/providers/transaction_provider.dart';
+import '../shared/theme/app_theme.dart';
+
 
 class FinanceApp extends StatelessWidget {
   const FinanceApp({super.key});
@@ -19,7 +20,7 @@ class FinanceApp extends StatelessWidget {
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
         themeMode: ThemeMode.system,
-        home:  HomeScreen(),
+        home:  const MainScreen(),
       ),
     );
   }
