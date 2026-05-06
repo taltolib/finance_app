@@ -19,8 +19,7 @@ class LightTheme {
 
     extensions: const [
       AppThemeColors(
-        backgroundWhiteOrDark: AppColors.backgroundWhite,
-        backgroundAcceptsWhiteOrDark: AppColors.backgroundAcceptsWhite,
+        background: AppColors.backgroundWhite,
         whiteForLight: AppColors.whiteForLight,
         dividerWhite: AppColors.dividerWhite,
         textGrey: AppColors.textGrey,

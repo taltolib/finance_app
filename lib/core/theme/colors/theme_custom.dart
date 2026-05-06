@@ -3,8 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart' show ThemeExtension;
 
 class AppThemeColors extends ThemeExtension<AppThemeColors> {
-  final Color backgroundWhiteOrDark;
-  final Color backgroundAcceptsWhiteOrDark;
+  final Color background;
   final Color whiteForLight;
   final Color dividerWhite;
   final Color textBlack;
@@ -14,8 +13,7 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
   final Color shadow;
 
   const AppThemeColors( {
-    required this.backgroundWhiteOrDark,
-    required this.backgroundAcceptsWhiteOrDark,
+    required this.background,
     required this.whiteForLight,
     required this.text,
     required this.dividerWhite,
@@ -27,8 +25,7 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
 
   @override
   AppThemeColors copyWith({
-    Color? backgroundWhiteOrDark,
-    Color? backgroundAcceptsWhiteOrDark,
+    Color? background,
     Color? whiteForLight,
     Color? dividerWhite,
     Color? textGrey,
@@ -37,8 +34,7 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
     Color? text,
     Color? shadow,
   }) => AppThemeColors(
-    backgroundWhiteOrDark: backgroundWhiteOrDark ?? this.backgroundWhiteOrDark,
-    backgroundAcceptsWhiteOrDark: backgroundAcceptsWhiteOrDark ?? this.backgroundAcceptsWhiteOrDark,
+    background: background ?? this.background,
     whiteForLight: whiteForLight ?? this.whiteForLight,
     dividerWhite: dividerWhite ?? this.dividerWhite,
     borderBlack: borderBlack ?? this.borderBlack,
@@ -52,8 +48,7 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
   AppThemeColors lerp(ThemeExtension<AppThemeColors>? other, double t) {
     if (other is! AppThemeColors) return this;
     return AppThemeColors(
-      backgroundWhiteOrDark: Color.lerp(backgroundWhiteOrDark, other.backgroundWhiteOrDark, t)!,
-      backgroundAcceptsWhiteOrDark: Color.lerp(backgroundAcceptsWhiteOrDark, other.backgroundAcceptsWhiteOrDark, t,)!,
+      background: Color.lerp(background, other.background, t)!,
       whiteForLight: Color.lerp(whiteForLight, other.whiteForLight, t)!,
       dividerWhite: Color.lerp(dividerWhite, other.dividerWhite, t)!,
       textGrey: Color.lerp(textGrey, other.textGrey, t)!,

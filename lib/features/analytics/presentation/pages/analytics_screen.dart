@@ -11,7 +11,9 @@ class AnalyticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppThemeColors>()!;
     return Scaffold(
+      backgroundColor: colors.background,
       appBar: AppBar(title: const Text('Аналитика')),
       body: Consumer<TransactionProvider>(
         builder: (context, provider, _) {

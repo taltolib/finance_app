@@ -10,7 +10,7 @@ class DarkTheme {
     scaffoldBackgroundColor: AppColors.backgroundDark,
 
     colorScheme: const ColorScheme.dark(
-      surface: AppColors.backgroundAcceptsDark,
+      surface: AppColors.backgroundDark,
       onSurface: AppColors.textWhite,
       error: AppColors.heartRed,
     ),
@@ -19,8 +19,7 @@ class DarkTheme {
 
     extensions: const [
       AppThemeColors(
-        backgroundWhiteOrDark: AppColors.backgroundDark,
-        backgroundAcceptsWhiteOrDark: AppColors.backgroundAcceptsDark,
+        background: AppColors.backgroundDark,
         whiteForLight: AppColors.textWhite,
         dividerWhite: AppColors.borderGrey,
         textGrey: AppColors.textGrey,

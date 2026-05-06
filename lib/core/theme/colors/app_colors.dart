@@ -30,8 +30,8 @@ class AppColors {
 
 
 
-  static const Color backgroundDark = Color(0xFF121212);
-  static const Color backgroundAcceptsDark = Color(0xFF1E1E1E);
+  static const Color backgroundDark =  Color(0xFF00153D);
+
 
   static const Color textWhite = Colors.white;
   // static const Color textSecondaryDark = Color(0xFFB0B0B0);
