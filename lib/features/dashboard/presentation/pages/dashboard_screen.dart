@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:finance_app/features/transactions/presentation/providers/transaction_provider.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../widgets/transaction_tile.dart';
-import 'package:finance_app/shared/theme/app_theme.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -107,7 +107,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: _buildStatCard(
                       'Доходы',
                       monthlyIncome,
-                      AppTheme.incomeColor,
+                      Colors.lightBlue,
                       Icons.arrow_upward,
                     ),
                   ),
@@ -116,7 +116,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: _buildStatCard(
                       'Расходы',
                       monthlyExpense,
-                      AppTheme.expenseColor,
+                      Colors.lightBlue,
                       Icons.arrow_downward,
                     ),
                   ),
@@ -191,7 +191,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 8),
             Text(
               title,
-              style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+              style: const TextStyle(fontSize: 14, color: Colors.lightBlue,),
             ),
             const SizedBox(height: 4),
             FittedBox(

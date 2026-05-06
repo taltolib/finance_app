@@ -2,9 +2,9 @@ import 'package:finance_app/features/share_import/domain/entities/transaction.da
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/theme/colors/theme_custom.dart';
 import '../../../../shared/errors/failure.dart';
-import '../../../../shared/theme/app_theme.dart';
-import '../bloc/share_intent_bloc.dart';
+ import '../bloc/share_intent_bloc.dart';
 
 class SharePreviewPage extends StatelessWidget {
   final String sharedContent;
@@ -140,10 +140,10 @@ class SharePreviewPage extends StatelessWidget {
   }
 
   Widget _buildParsedView(BuildContext context, Transaction transaction) {
-    final colors = Theme.of(context).extension<AppColors>()!;
+    final colors = Theme.of(context).extension<AppThemeColors>()!;
     final isIncome = transaction.type.name == 'income';
-    final color = isIncome ? colors.income : colors.expense;
-    final bgColor = isIncome ? colors.incomeLight : colors.expenseLight;
+    final color = isIncome ?  Colors.lightBlue :  Colors.lightBlue;
+    final bgColor = isIncome ?  Colors.lightBlue : Colors.lightBlue;
     final sign = isIncome ? '+' : '-';
     final f = NumberFormat('#,##0.00', 'ru_RU');
     final timeF = DateFormat('HH:mm');

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:intl/intl.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../../data/models/kanban_model.dart';
@@ -19,8 +20,40 @@ class KanbanCardWidget extends StatefulWidget {
   State<KanbanCardWidget> createState() => _KanbanCardWidgetState();
 }
 
-class _KanbanCardWidgetState extends State<KanbanCardWidget> {
+class _KanbanCardWidgetState extends State<KanbanCardWidget>
+    with SingleTickerProviderStateMixin {
   bool _done = false;
+  bool _isHovering = false;
+  late AnimationController _hoverController;
+  late Animation<double> _hoverScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _hoverController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _hoverScale = Tween<double>(begin: 1.0, end: 1.02).animate(
+      CurvedAnimation(parent: _hoverController, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _hoverController.dispose();
+    super.dispose();
+  }
+
+  void _onHoverEnter() {
+    setState(() => _isHovering = true);
+    _hoverController.forward();
+  }
+
+  void _onHoverExit() {
+    setState(() => _isHovering = false);
+    _hoverController.reverse();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,91 +61,177 @@ class _KanbanCardWidgetState extends State<KanbanCardWidget> {
       data: widget.card,
       feedback: Material(
         color: Colors.transparent,
-        child: Opacity(
-          opacity: 0.9,
-          child: _buildCardContent(),
+        elevation: 0,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 1.0, end: 1.08).animate(
+            CurvedAnimation(parent: _hoverController, curve: Curves.easeOutCubic),
+          ),
+          child: _buildCardContent(isDragging: true),
         ),
       ),
       childWhenDragging: Opacity(
-        opacity: 0.3,
+        opacity: 0.2,
         child: _buildCardContent(),
       ),
-      child: GestureDetector(
-        onTap: () => _showCardDetails(context),
-        child: _buildCardContent(),
+      child: MouseRegion(
+        onEnter: (_) => _onHoverEnter(),
+        onExit: (_) => _onHoverExit(),
+        child: GestureDetector(
+          onTap: () => _showCardDetails(context),
+          child: ScaleTransition(
+            scale: _hoverScale,
+            child: _buildCardContent(),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildCardContent() {
-    return Container(
-      width: 240,
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        // Dark card with slight tint like in the photo
-        color: const Color(0xFF2A2A2A).withOpacity(0.92),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.06),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Checkbox circle (like in photo)
-          GestureDetector(
-            onTap: () => setState(() => _done = !_done),
-            child: Container(
-              width: 20,
-              height: 20,
-              margin: const EdgeInsets.only(top: 1, right: 10),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: _done ? Colors.white70 : Colors.white38,
-                  width: 1.5,
-                ),
-                color: _done ? Colors.white24 : Colors.transparent,
+  Widget _buildCardContent({bool isDragging = false}) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(_isHovering && !isDragging ? 0.18 : 0.12),
+                  Colors.white.withOpacity(_isHovering && !isDragging ? 0.12 : 0.08),
+                ],
               ),
-              child: _done
-                  ? const Icon(Icons.check, size: 12, color: Colors.white)
-                  : null,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withOpacity(
+                  _isHovering && !isDragging ? 0.25 : 0.15,
+                ),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(
+                    _isHovering && !isDragging ? 0.25 : 0.15,
+                  ),
+                  blurRadius: _isHovering && !isDragging ? 16 : 8,
+                  offset: _isHovering && !isDragging
+                      ? const Offset(0, 8)
+                      : const Offset(0, 4),
+                  spreadRadius: 0,
+                ),
+                if (_isHovering && !isDragging)
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.1),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+              ],
             ),
-          ),
-          // Card text content
-          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  widget.card.note ??
-                      (widget.card.transactionId != null
-                          ? 'Транзакция #${widget.card.transactionId}'
-                          : 'Без заметки'),
-                  style: TextStyle(
-                    color: _done ? Colors.white38 : Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    decoration: _done ? TextDecoration.lineThrough : null,
-                    height: 1.4,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GestureDetector(
+                      onTap: () => setState(() => _done = !_done),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        width: 22,
+                        height: 22,
+                        margin: const EdgeInsets.only(top: 0, right: 10),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: _done
+                                ? Colors.white.withOpacity(0.7)
+                                : Colors.white.withOpacity(0.35),
+                            width: 1.5,
+                          ),
+                          color: _done
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.transparent,
+                          boxShadow: [
+                            if (_done)
+                              BoxShadow(
+                                color: Colors.white.withOpacity(0.3),
+                                blurRadius: 6,
+                                spreadRadius: 1,
+                              ),
+                          ],
+                        ),
+                        child: _done
+                            ? const Icon(Icons.check,
+                                size: 14, color: Colors.white)
+                            : null,
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.card.note ??
+                                (widget.card.transactionId != null
+                                    ? 'Транзакция #${widget.card.transactionId}'
+                                    : 'Без заметки'),
+                            style: TextStyle(
+                              color: _done
+                                  ? Colors.white.withOpacity(0.4)
+                                  : Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              decoration: _done
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                              height: 1.4,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (widget.card.status.isNotEmpty &&
+                              widget.card.status != 'Новая') ...[
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.15),
+                                ),
+                              ),
+                              child: Text(
+                                widget.card.status,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.6),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                if (widget.card.status.isNotEmpty && widget.card.status != 'Новая') ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.card.status,
-                    style: const TextStyle(color: Colors.white38, fontSize: 11),
-                  ),
-                ],
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
+
 
   void _showCardDetails(BuildContext context) {
     showModalBottomSheet(
@@ -145,10 +264,12 @@ class CardDetailsBottomSheet extends StatefulWidget {
   State<CardDetailsBottomSheet> createState() => _CardDetailsBottomSheetState();
 }
 
-class _CardDetailsBottomSheetState extends State<CardDetailsBottomSheet> {
+class _CardDetailsBottomSheetState extends State<CardDetailsBottomSheet>
+    with SingleTickerProviderStateMixin {
   late Color _selectedColor;
   late TextEditingController _noteController;
   late TextEditingController _statusController;
+  late AnimationController _animationController;
 
   @override
   void initState() {
@@ -156,107 +277,269 @@ class _CardDetailsBottomSheetState extends State<CardDetailsBottomSheet> {
     _selectedColor = widget.card.cardColor;
     _noteController = TextEditingController(text: widget.card.note ?? '');
     _statusController = TextEditingController(text: widget.card.status);
+    
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    _statusController.dispose();
+    _animationController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF1C1C1E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-        left: 20,
-        right: 20,
-        top: 16,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _animationController.value,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.3),
+              end: Offset.zero,
+            ).animate(
+              CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
+            ),
+            child: child,
+          ),
+        );
+      },
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
             decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Редактировать карточку',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Note field
-          _buildTextField(_noteController, 'Заметка'),
-          const SizedBox(height: 12),
-          // Status field
-          _buildTextField(_statusController, 'Статус'),
-          const SizedBox(height: 20),
-          // Action buttons
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    widget.onDeleted();
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    side: const BorderSide(color: Colors.redAccent),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text('Удалить'),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withOpacity(0.12),
+                  Colors.white.withOpacity(0.08),
+                ],
+              ),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+              border: Border(
+                top: BorderSide(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
+                left: BorderSide(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
+                ),
+                right: BorderSide(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _saveChanges,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              left: 24,
+              right: 24,
+              top: 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag indicator
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  child: const Text('Сохранить'),
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+                // Title
+                Text(
+                  'Редактировать карточку',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Note field
+                _buildGlassmorphicTextField(
+                  _noteController,
+                  'Заметка',
+                  Icons.note_outlined,
+                ),
+                const SizedBox(height: 14),
+                // Status field
+                _buildGlassmorphicTextField(
+                  _statusController,
+                  'Статус',
+                  Icons.flag_outlined,
+                ),
+                const SizedBox(height: 24),
+                // Action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildGlassmorphicButton(
+                        label: 'Удалить',
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          widget.onDeleted();
+                        },
+                        isDestructive: true,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildGlassmorphicButton(
+                        label: 'Сохранить',
+                        onPressed: _saveChanges,
+                        isPrimary: true,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label) {
-    return TextField(
-      controller: controller,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white54),
-        enabledBorder: OutlineInputBorder(
-          borderSide: const BorderSide(color: Colors.white24),
-          borderRadius: BorderRadius.circular(10),
+  Widget _buildGlassmorphicTextField(
+    TextEditingController controller,
+    String label,
+    IconData icon,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
         ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: const BorderSide(color: Colors.white54),
-          borderRadius: BorderRadius.circular(10),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: TextField(
+            controller: controller,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+            ),
+            decoration: InputDecoration(
+              labelText: label,
+              labelStyle: TextStyle(
+                color: Colors.white.withOpacity(0.6),
+                fontSize: 13,
+              ),
+              prefixIcon: Icon(
+                icon,
+                color: Colors.white.withOpacity(0.5),
+                size: 18,
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 14,
+                horizontal: 12,
+              ),
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.05),
+            ),
+          ),
         ),
-        filled: true,
-        fillColor: Colors.white10,
+      ),
+    );
+  }
+
+  Widget _buildGlassmorphicButton({
+    required String label,
+    required VoidCallback onPressed,
+    bool isPrimary = false,
+    bool isDestructive = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            gradient: isPrimary
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withOpacity(0.3),
+                      Colors.white.withOpacity(0.2),
+                    ],
+                  )
+                : isDestructive
+                    ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.red.withOpacity(0.2),
+                          Colors.red.withOpacity(0.1),
+                        ],
+                      )
+                    : LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.white.withOpacity(0.08),
+                          Colors.white.withOpacity(0.05),
+                        ],
+                      ),
+            border: Border.all(
+              color: isDestructive
+                  ? Colors.red.withOpacity(0.4)
+                  : Colors.white.withOpacity(0.2),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDestructive
+                    ? Colors.red.withOpacity(0.2)
+                    : Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isDestructive ? Colors.red : Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -272,12 +555,5 @@ class _CardDetailsBottomSheetState extends State<CardDetailsBottomSheet> {
     );
     widget.onUpdated(updatedCard);
     Navigator.of(context).pop();
-  }
-
-  @override
-  void dispose() {
-    _noteController.dispose();
-    _statusController.dispose();
-    super.dispose();
   }
 }

@@ -249,7 +249,7 @@ class _AddColumnDialogState extends State<AddColumnDialog> {
 }
 
 // ─── Add Card Bottom Sheet ────────────────────────────────────────────────────
-class AddCardBottomSheet extends StatelessWidget {
+class AddCardBottomSheet extends StatelessWidget  {
   final List<dynamic> items;
   final Function(dynamic) onCardAdded;
 

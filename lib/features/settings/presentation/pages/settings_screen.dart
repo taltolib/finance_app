@@ -73,6 +73,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+
   void _showClearDataDialog(BuildContext context) {
     showDialog(
       context: context,

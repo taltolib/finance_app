@@ -8,7 +8,6 @@ import '../features/kanban/presentation/pages/kanban_screen.dart';
 import '../features/settings/presentation/pages/settings_screen.dart';
 import 'package:finance_app/features/transactions/presentation/providers/transaction_provider.dart';
 
-import '../shared/theme/app_theme.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});

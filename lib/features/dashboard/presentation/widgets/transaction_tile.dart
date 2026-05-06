@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:finance_app/features/transactions/data/models/transaction.dart';
-import 'package:finance_app/shared/theme/app_theme.dart' show AppTheme;
 
 
 class TransactionTile extends StatelessWidget {
@@ -17,7 +16,7 @@ class TransactionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isIncome = transaction.type == TransactionType.income;
-    final color = isIncome ? AppTheme.incomeColor : AppTheme.expenseColor;
+    final color = isIncome ?  Colors.lightBlue :  Colors.lightBlue;
     final icon = isIncome ? Icons.arrow_upward : Icons.arrow_downward;
 
     return Dismissible(
@@ -57,7 +56,7 @@ class TransactionTile extends StatelessWidget {
               ),
               Text(
                 'Баланс: ${NumberFormat('#,##0.00', 'ru_RU').format(transaction.balanceAfter)} UZS',
-                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                style: const TextStyle(fontSize: 12, color: Colors.lightBlue,),
               ),
             ],
           ),
