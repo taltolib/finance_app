@@ -1,3 +1,4 @@
+import 'package:finance_app/core/theme/colors/theme_custom.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../core/theme/colors/app_colors.dart';
@@ -77,8 +78,9 @@ class _MainScreenState extends State<MainScreen> {
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,
           selectedItemColor: AppColors.blue,
-          unselectedItemColor: AppColors.greyDark,
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          unselectedItemColor: AppColors.shadowDark,
+
+          backgroundColor: Theme.of(context).extension<AppThemeColors>()!.background,
           type: BottomNavigationBarType.fixed,
         ),
       ),

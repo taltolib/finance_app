@@ -15,6 +15,7 @@ class TransactionProvider extends ChangeNotifier {
   String? get error => _error;
   DateTime get selectedMonth => _selectedMonth;
 
+
   // ─── Фильтрованные транзакции текущего месяца ──────────────────────────
   List<Transaction> get currentMonthTransactions => _transactions.where((tx) {
     return tx.dateTime.year == _selectedMonth.year &&

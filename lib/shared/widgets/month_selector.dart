@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 
 class MonthSelector extends StatelessWidget {
   final DateTime selectedMonth;
-  final int selectedYear;
+  final int? selectedYear;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final bool isEnabled;
@@ -14,7 +14,7 @@ class MonthSelector extends StatelessWidget {
   const MonthSelector({
     super.key,
     required this.selectedMonth,
-    required this.selectedYear,
+    this.selectedYear,
     required this.onPrevious,
     required this.onNext,
     this.isEnabled = true,
@@ -24,7 +24,7 @@ class MonthSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final monthName = DateFormat('MMMM yyyy', 'ru_RU').format(
-      DateTime(selectedYear, selectedMonth.month),
+      DateTime(selectedYear ?? DateTime.now().year, selectedMonth.month),
     );
 
     return Container(
