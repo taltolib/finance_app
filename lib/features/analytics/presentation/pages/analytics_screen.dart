@@ -11,7 +11,9 @@ class AnalyticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppThemeColors>()!;
     return Scaffold(
+      backgroundColor: colors.background,
       appBar: AppBar(title: const Text('Аналитика')),
       body: Consumer<TransactionProvider>(
         builder: (context, provider, _) {
@@ -66,8 +68,8 @@ class AnalyticsScreen extends StatelessWidget {
                     place: entry.key,
                     amount: entry.value,
                     percent: percent.toDouble(),
-                    color: colors.textGrey,
-                    bgColor: colors.textGrey,
+                    color: AppColors.greyDark,
+                    bgColor: AppColors.greyDark,
                     f: f,
                   );
                 }),

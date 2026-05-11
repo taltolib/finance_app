@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../core/theme/colors/app_colors.dart';
 import '../features/share_import/presentation/bloc/share_intent_bloc.dart';
 import '../features/share_import/presentation/pages/share_preview_page.dart';
 import '../features/dashboard/presentation/pages/dashboard_screen.dart';
@@ -75,9 +76,9 @@ class _MainScreenState extends State<MainScreen> {
           ],
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,
-          selectedItemColor: Theme.of(context).primaryColor,
-          unselectedItemColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-          backgroundColor: Theme.of(context).cardColor,
+          selectedItemColor: AppColors.blue,
+          unselectedItemColor: AppColors.greyDark,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           type: BottomNavigationBarType.fixed,
         ),
       ),
