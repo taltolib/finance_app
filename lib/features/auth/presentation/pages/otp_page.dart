@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/colors/app_colors.dart';
@@ -157,8 +159,10 @@ class _OtpCell extends StatelessWidget {
     required this.enabled,
   });
 
-  @overrideWidget
-  build(BuildContext context) {
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension()!;
+
     return SizedBox(
       width: 48,
       height: 56,

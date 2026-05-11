@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/state/providers/theme_provider.dart';
+ import '../../../../core/state/providers/theme_provider.dart';
 import '../../../../core/theme/colors/app_colors.dart';
-import '../../../../core/theme/colors/theme_custom.dart';
-import '../../../../generated/fonts/app_fonts.dart';
+ import '../../../../generated/fonts/app_fonts.dart';
 import '../../../../shared/widgets/push_button.dart';
 import '../../../../shared/widgets/top_snackbar.dart';
 import '../providers/auth_provider.dart';
@@ -80,7 +79,7 @@ class _PhoneAuthPageState extends State {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension()!;
-    final isDark = context.watch();
+    final isDark = context.watch<ThemeProvider>();
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
