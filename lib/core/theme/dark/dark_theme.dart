@@ -8,6 +8,7 @@ class DarkTheme {
     extensions: const [
       AppThemeColors(
         background: AppColors.backgroundDark,
+        backgroundLight: AppColors.backgroundAcceptsDark,
         border: AppColors.borderDark,
         more: AppColors.moreDark,
         nickname: AppColors.greyDark,

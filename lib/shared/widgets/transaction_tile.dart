@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:finance_app/features/transactions/data/models/transaction.dart' show TransactionType;
 
 class TransactionTile extends StatelessWidget {
   final String title;
@@ -17,8 +18,6 @@ class TransactionTile extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
   final bool isDismissible;
-
-  enum TransactionType { income, expense }
 
   const TransactionTile({
     super.key,

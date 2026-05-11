@@ -3,9 +3,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../data/models/auth_models.dart';
-import '../data/services/auth_api_service.dart';
-import '../../core/api/api_service.dart';
+import 'package:finance_app/core/api/api_service.dart';
+import 'package:finance_app/features/auth/data/models/auth_models.dart';
+import 'package:finance_app/features/auth/data/services/auth_api_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthApiService _apiService = AuthApiService();

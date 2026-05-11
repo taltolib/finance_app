@@ -19,7 +19,9 @@ class AppColors {
   ////THEME COLORS
 
   static const Color backgroundWhite = Color(0xFFF2F2F7);
-  static const Color backgroundDark =  Color(0xFF1A1A2E);
+  static const Color backgroundAcceptsWhite = Color(0xFFFFFFFF);
+  static const Color backgroundDark = Color(0xFF121212);
+  static const Color backgroundAcceptsDark = Color(0xFF1E1E1E);
 
   // static const Color backgroundAcceptsWhite = Color(0xFFFFFFFF);
 
@@ -30,8 +32,8 @@ class AppColors {
   static const Color textDark = Color(0xFF000000);
   static const Color moreDark = Color(0xFF1A1A3E);
   static const Color moreWhite = Color(0xFFF2F2F9);
-  static const Color shadowWhite = Color(0xFF1A1A3E);
-  static const Color shadowDark = Color(0xFFF2F2F9);
+  static const Color shadowWhite = Color(0xFF2A2D36);
+  static const Color shadowDark = Color(0xFF2A2D36);
   static const Color greyDark = Colors.grey;
   static const Color greyWhite = Colors.grey;
   static const Color borderWhite = Color(0xFF2A2D36);

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../shared/providers/theme_provider.dart';
-import '../../../transactions/data/models/transaction.dart';
-import '../providers/kanban_provider.dart';
+import 'package:finance_app/core/state/providers/theme_provider.dart';
+import 'package:finance_app/features/transactions/data/models/transaction.dart';
 import 'package:finance_app/features/transactions/presentation/providers/transaction_provider.dart';
+import '../providers/kanban_provider.dart';
 import '../../data/models/kanban_model.dart' show KanbanColumn, KanbanCard;
 import '../widgets/kanban_column.dart';
 

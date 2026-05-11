@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../shared/providers/theme_provider.dart';
+import 'package:finance_app/core/state/providers/theme_provider.dart';
 import '../../data/models/kanban_model.dart';
 import 'kanban_card.dart';
 

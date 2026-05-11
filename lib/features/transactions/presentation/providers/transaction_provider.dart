@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../shared/database/database_helper.dart' show DatabaseHelper;
+import 'package:finance_app/shared/database/database_helper.dart' show DatabaseHelper;
 import '../../data/models/transaction.dart';
 
 class TransactionProvider extends ChangeNotifier {

@@ -1,13 +1,12 @@
-import 'package:finance_app/services/database_helper.dart' show DatabaseHelper;
-
+import 'package:finance_app/shared/database/database_helper.dart' show DatabaseHelper;
+import 'package:finance_app/core/state/providers/theme_provider.dart';
+import 'package:finance_app/features/transactions/presentation/providers/transaction_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'features/share_import/presentation/bloc/share_intent_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
-import 'shared/providers/theme_provider.dart';
-import 'features/transactions/presentation/providers/transaction_provider.dart';
 import 'features/kanban/presentation/providers/kanban_provider.dart';
 import 'app/app_shell.dart';
 import 'features/share_import/domain/usecases/share_intent_usecases.dart';
@@ -59,9 +58,9 @@ class HumoTrackerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => TransactionProvider()),
-        ChangeNotifierProvider(create: (_) => KanbanProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider<TransactionProvider>(create: (_) => TransactionProvider()),
+        ChangeNotifierProvider<KanbanProvider>(create: (_) => KanbanProvider()),
+        ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
         BlocProvider(
           create: (_) => ShareIntentBloc(
             getInitialSharedText: getInitialSharedText,

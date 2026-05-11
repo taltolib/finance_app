@@ -4,6 +4,7 @@ import 'package:flutter/material.dart' show ThemeExtension;
 
 class AppThemeColors extends ThemeExtension<AppThemeColors> {
   final Color background;
+  final Color backgroundLight;
   final Color text;
   final Color border;
   final Color more;
@@ -16,12 +17,13 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
     required this.shadow,
     required this.border,
     required this.more,
-    required this.nickname,
+    required this.nickname, required this.backgroundLight,
   });
 
   @override
   AppThemeColors copyWith({
     Color? background,
+    Color? backgroundLight,
     Color? border,
     Color? more,
     Color? nickname,
@@ -29,6 +31,7 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
     Color? shadow,
   }) => AppThemeColors(
     background: background ?? this.background,
+    backgroundLight: backgroundLight ?? this.backgroundLight,
     text: text ?? this.text,
     shadow: shadow ?? this.shadow,
     border: border ?? this.border,
@@ -41,6 +44,7 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
     if (other is! AppThemeColors) return this;
     return AppThemeColors(
       background: Color.lerp(background, other.background, t)!,
+      backgroundLight: Color.lerp(backgroundLight, other.backgroundLight, t)!,
       border: Color.lerp(border, other.border, t)!,
       more: Color.lerp(more, other.more, t)!,
       text: Color.lerp(text, other.text, t)!,

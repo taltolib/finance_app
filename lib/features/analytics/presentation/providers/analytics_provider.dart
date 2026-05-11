@@ -2,10 +2,9 @@
 /// Управление состоянием аналитики
 
 import 'package:flutter/material.dart';
-import '../data/models/analytics_summary_model.dart';
-import '../data/models/chart_point_model.dart';
-import '../data/services/analytics_api_service.dart';
-import 'package:finance_app/features/transactions/presentation/providers/transaction_provider.dart';
+import '../../data/models/analytics_summary_model.dart';
+import '../../data/models/chart_point_model.dart';
+import '../../data/services/analytics_api_service.dart';
 
 class AnalyticsProvider extends ChangeNotifier {
   final AnalyticsApiService _apiService = AnalyticsApiService();
