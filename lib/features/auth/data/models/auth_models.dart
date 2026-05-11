@@ -1,20 +1,21 @@
 /// Модели для аутентификации
+
 class SendCodeResponse {
   final bool success;
   final String? message;
-  final String? requestId;
+  final String? phoneCodeHash;
 
   SendCodeResponse({
     required this.success,
     this.message,
-    this.requestId,
+    this.phoneCodeHash,
   });
 
   factory SendCodeResponse.fromJson(Map<String, dynamic> json) {
     return SendCodeResponse(
-      success: json['success'] ?? false,
-      message: json['message'],
-      requestId: json['request_id'],
+      success: json['success'] == true,
+      message: json['message']?.toString(),
+      phoneCodeHash: json['phone_code_hash']?.toString(),
     );
   }
 
@@ -22,7 +23,7 @@ class SendCodeResponse {
     return {
       'success': success,
       'message': message,
-      'request_id': requestId,
+      'phone_code_hash': phoneCodeHash,
     };
   }
 }
@@ -42,10 +43,12 @@ class VerifyCodeResponse {
 
   factory VerifyCodeResponse.fromJson(Map<String, dynamic> json) {
     return VerifyCodeResponse(
-      success: json['success'] ?? false,
-      message: json['message'],
-      sessionToken: json['session_token'],
-      user: json['user'] != null ? UserInfo.fromJson(json['user']) : null,
+      success: json['success'] == true,
+      message: json['message']?.toString(),
+      sessionToken: json['session_token']?.toString(),
+      user: json['user'] is Map<String, dynamic>
+          ? UserInfo.fromJson(json['user'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -62,39 +65,51 @@ class VerifyCodeResponse {
 class UserInfo {
   final String id;
   final String phoneNumber;
+  final String? name;
   final String? firstName;
   final String? lastName;
   final String? username;
+  final String? photoBase64;
 
   UserInfo({
     required this.id,
     required this.phoneNumber,
+    this.name,
     this.firstName,
     this.lastName,
     this.username,
+    this.photoBase64,
   });
 
   factory UserInfo.fromJson(Map<String, dynamic> json) {
     return UserInfo(
-      id: json['id'] ?? '',
-      phoneNumber: json['phone_number'] ?? '',
-      firstName: json['first_name'],
-      lastName: json['last_name'],
-      username: json['username'],
+      id: json['id']?.toString() ?? '',
+      phoneNumber: (json['phone'] ?? json['phone_number'] ?? '').toString(),
+      name: json['name']?.toString(),
+      firstName: json['first_name']?.toString(),
+      lastName: json['last_name']?.toString(),
+      username: json['username']?.toString(),
+      photoBase64: json['photo_base64']?.toString(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'phone_number': phoneNumber,
+      'phone': phoneNumber,
+      'name': name,
       'first_name': firstName,
       'last_name': lastName,
       'username': username,
+      'photo_base64': photoBase64,
     };
   }
 
   String get fullName {
+    if (name != null && name!.trim().isNotEmpty) {
+      return name!.trim();
+    }
+
     final first = firstName ?? '';
     final last = lastName ?? '';
     return '$first $last'.trim();
