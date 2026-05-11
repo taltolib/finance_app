@@ -77,7 +77,7 @@ class StatCard extends StatelessWidget {
             const SizedBox(height: 12),
             // Sum
             if (isLoading)
-              SizedBox(
+              const SizedBox(
                 height: 28,
                 child: ShimmerLoader(
                   width: 100,
@@ -166,7 +166,7 @@ class _ShimmerLoaderState extends State<ShimmerLoader>
           return LinearGradient(
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
-            stops: [
+            stops: const  [
               0.0,
               0.5,
               1.0,
@@ -195,7 +195,7 @@ class _ShimmerLoaderState extends State<ShimmerLoader>
 class _SlidingGradientTransform extends GradientTransform {
   final double slidePercent;
 
-  _SlidingGradientTransform({required this.slidePercent});
+  const _SlidingGradientTransform({required this.slidePercent});
 
   @override
   Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {

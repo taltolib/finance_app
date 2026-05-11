@@ -32,7 +32,7 @@ class AppColors {
   static const Color textDark = Color(0xFF000000);
   static const Color moreDark = Color(0xFF1A1A3E);
   static const Color moreWhite = Color(0xFFF2F2F9);
-  static const Color shadowWhite = Color(0xFF2A2D36);
+  static const Color shadowWhite = Color(0xFFF2F2F7);
   static const Color shadowDark = Color(0xFF2A2D36);
   static const Color greyDark = Colors.grey;
   static const Color greyWhite = Colors.grey;

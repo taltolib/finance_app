@@ -45,12 +45,10 @@ class _KanbanScreenState extends State<KanbanScreen> {
               fit: BoxFit.cover,
             ),
           )
-              : Positioned.fill(
-            child: Image.asset(
+              : Positioned.fill(child: Image.asset(
               'assets/images/kanban_bg_dark.png',
               fit: BoxFit.cover,
-            ),
-          ),
+            ),),
           // Subtle dark overlay for readability
           Positioned.fill(
             child: Container(

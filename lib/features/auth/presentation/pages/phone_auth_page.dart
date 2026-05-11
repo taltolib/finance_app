@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
- import '../../../../core/state/providers/theme_provider.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/theme/colors/app_colors.dart';
- import '../../../../generated/fonts/app_fonts.dart';
+import '../../../../generated/fonts/app_fonts.dart';
 import '../../../../shared/widgets/push_button.dart';
 import '../../../../shared/widgets/top_snackbar.dart';
 import '../providers/auth_provider.dart';
 
 class PhoneAuthPage extends StatefulWidget {
-  final Function(String) onPhoneSubmitted;
+  final ValueChanged<String> onPhoneSubmitted;
 
   const PhoneAuthPage({
     super.key,
@@ -57,7 +56,7 @@ class _PhoneAuthPageState extends State {
 
       if (success) {
         TopSnackBar.show(context, 'Код отправлен в Telegram');
-        widget.onPhoneSubmitted(fullPhone);
+        (widget as PhoneAuthPage).onPhoneSubmitted(fullPhone);
       } else {
         TopSnackBar.show(
           context,
@@ -79,7 +78,7 @@ class _PhoneAuthPageState extends State {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension()!;
-    final isDark = context.watch<ThemeProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
@@ -88,8 +87,10 @@ class _PhoneAuthPageState extends State {
         children: [
           Positioned.fill(
             child: Image.asset(
-              isDark.authBackgroundAsset,
-              key: ValueKey(isDark.authBackgroundAsset),
+              isDark
+                  ? 'assets/images/kanban_bg_dark.png'
+                  : 'assets/images/kanban_bg.png',
+              key: ValueKey(isDark),
               fit: BoxFit.cover,
             ),
           ),

@@ -1,9 +1,7 @@
-abstract class Failure implements Exception {
+abstract class Failure {
   final String message;
-  const Failure(this.message);
 
-  @override
-  String toString() => message;
+  const Failure(this.message);
 }
 
 class UnknownFailure extends Failure {
@@ -11,11 +9,11 @@ class UnknownFailure extends Failure {
 }
 
 class ParsingFailure extends Failure {
-  const ParsingFailure(String message) : super(message);
+  const ParsingFailure([String message = 'Ошибка парсинга']) : super(message);
 }
 
 class SaveFailure extends Failure {
-  const SaveFailure(String message) : super(message);
+  const SaveFailure([String message = 'Ошибка сохранения']) : super(message);
 }
 
 class EmptyContentFailure extends Failure {
