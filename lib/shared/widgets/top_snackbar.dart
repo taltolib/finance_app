@@ -62,7 +62,7 @@ class _TopSnackBarWidgetState extends State<_TopSnackBarWidget>
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: PushButton(
             language: widget.message,
-            flagAsset: Icon(Icons.error, color: AppColors.textWhite, ),
+            flagAsset: const Icon(Icons.error, color: AppColors.textWhite, ),
             onTap: () {},
             isSelected: false,
             height: 70,

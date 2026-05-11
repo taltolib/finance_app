@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:finance_app/features/transactions/presentation/providers/transaction_provider.dart';
-
-import '../../../../shared/providers/theme_provider.dart';
+import 'package:finance_app/core/state/providers/theme_provider.dart';
 ///пуст везде будет картинка которая в ассет/имаже  в заднем фоне и чтобы  в зависемости от темы она меналось на white/dart  версию
 
 class SettingsScreen extends StatefulWidget {

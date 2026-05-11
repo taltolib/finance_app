@@ -6,7 +6,6 @@ import '../models/auth_models.dart';
 class AuthApiService {
   final ApiService _apiService = ApiService();
 
-  /// Отправить код авторизации на номер Telegram.
   /// Backend ждёт body: { "phone": "+998..." }
   Future<SendCodeResponse> sendCode({
     required String phoneNumber,
@@ -21,7 +20,6 @@ class AuthApiService {
     return SendCodeResponse.fromJson(response);
   }
 
-  /// Проверить код и получить session token.
   /// Backend ждёт body:
   /// {
   ///   "phone": "+998...",
@@ -54,7 +52,6 @@ class AuthApiService {
     return verifyResponse;
   }
 
-  /// Выйти из аккаунта
   Future<void> logout() async {
     await _apiService.post(
       ApiEndpoints.authLogout,

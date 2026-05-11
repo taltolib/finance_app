@@ -1,4 +1,4 @@
-import '../../../../services/database_helper.dart';
+import 'package:finance_app/shared/database/database_helper.dart';
 import '../../../../shared/errors/failure.dart';
 import '../../../../features/transactions/data/models/transaction.dart' as tx;
 import '../../domain/entities/transaction.dart' as entity;

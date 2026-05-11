@@ -1,7 +1,7 @@
-import 'package:finance_app/features/kanban/data/models/kanban_model.dart';
-import 'package:finance_app/services/database_helper.dart';
-import 'package:finance_app/features/kanban/data/services/boards_api_service.dart';
 import 'package:flutter/material.dart';
+import 'package:finance_app/core/database/database_helper.dart';
+import 'package:finance_app/features/kanban/data/models/kanban_model.dart';
+import 'package:finance_app/features/kanban/data/services/boards_api_service.dart';
 
 class KanbanProvider with ChangeNotifier {
   final BoardsApiService _apiService = BoardsApiService();
@@ -170,17 +170,17 @@ class KanbanProvider with ChangeNotifier {
   Future<void> moveCard(String cardId, String fromColumnId, String toColumnId) async {
     final fromColumn = _columns.firstWhere((c) => c.id == fromColumnId);
     final card = fromColumn.cards.firstWhere((c) => c.id == cardId);
-    
+
     fromColumn.cards.remove(card);
     final toColumn = _columns.firstWhere((c) => c.id == toColumnId);
     toColumn.cards.add(card);
-    
-    await DatabaseHelper.instance.updateKanbanCard(card);
+
+    await DatabaseHelper.instance.updateKanbanCard(card, toColumnId);
     notifyListeners();
   }
 
   Future<void> updateCard(KanbanCard card, String columnId) async {
-    await DatabaseHelper.instance.updateKanbanCard(card);
+    await DatabaseHelper.instance.updateKanbanCard(card, columnId);
     // Refresh local state
     final column = _columns.firstWhere((c) => c.id == columnId);
     final index = column.cards.indexWhere((c) => c.id == card.id);

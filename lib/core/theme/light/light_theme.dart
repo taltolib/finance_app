@@ -8,6 +8,7 @@ class LightTheme {
     extensions: const [
       AppThemeColors(
         background: AppColors.backgroundWhite,
+        backgroundLight: AppColors.backgroundAcceptsWhite,
         border: AppColors.borderWhite,
         more: AppColors.moreWhite,
         text: AppColors.textDark,

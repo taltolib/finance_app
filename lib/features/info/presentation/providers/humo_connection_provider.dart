@@ -2,8 +2,8 @@
 /// Управление состоянием подключения HUMO bot
 
 import 'package:flutter/material.dart';
-import '../data/models/humo_status_model.dart';
-import '../data/services/humo_api_service.dart';
+import 'package:finance_app/features/info/data/models/humo_status_model.dart';
+import 'package:finance_app/features/info/data/services/humo_api_service.dart';
 
 class HumoConnectionProvider extends ChangeNotifier {
   final HumoApiService _apiService = HumoApiService();
