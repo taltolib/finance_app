@@ -68,8 +68,8 @@ class AnalyticsScreen extends StatelessWidget {
                     place: entry.key,
                     amount: entry.value,
                     percent: percent.toDouble(),
-                    color: colors.textGrey,
-                    bgColor: colors.textGrey,
+                    color: AppColors.greyDark,
+                    bgColor: AppColors.greyDark,
                     f: f,
                   );
                 }),

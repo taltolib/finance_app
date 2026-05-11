@@ -1,11 +1,108 @@
 import 'package:finance_app/features/kanban/data/models/kanban_model.dart';
 import 'package:finance_app/services/database_helper.dart';
+import 'package:finance_app/features/kanban/data/services/boards_api_service.dart';
 import 'package:flutter/material.dart';
 
 class KanbanProvider with ChangeNotifier {
-  List<KanbanColumn> _columns = [];
+  final BoardsApiService _apiService = BoardsApiService();
 
+  // Current board state
+  List<KanbanColumn> _columns = [];
+  Map<String, dynamic>? _currentBoard;
+
+  // Archived boards
+  List<Map<String, dynamic>> _archivedBoards = [];
+
+  // UI states
+  bool _isLoadingColumns = false;
+  bool _isLoadingArchivedBoards = false;
+  bool _isLoadingCurrentBoard = false;
+  bool _isLoading = false;
+  String? _error;
+  bool _isEmpty = false;
+
+  // Getters
   List<KanbanColumn> get columns => _columns;
+  Map<String, dynamic>? get currentBoard => _currentBoard;
+  List<Map<String, dynamic>> get archivedBoards => _archivedBoards;
+
+  bool get isLoadingColumns => _isLoadingColumns;
+  bool get isLoadingArchivedBoards => _isLoadingArchivedBoards;
+  bool get isLoadingCurrentBoard => _isLoadingCurrentBoard;
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+  bool get isEmpty => _isEmpty;
+
+  /// Инициализировать доски - попробовать загрузить с API, fallback на SQLite
+  Future<void> initializeBoards() async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      // Попытаться загрузить с API
+      try {
+        final response = await _apiService.getCurrentBoard();
+        _currentBoard = response['data'] as Map<String, dynamic>;
+        // Парсить колонки из ответа API
+        // TODO: реализовать после получения структуры API ответа
+      } catch (e) {
+        // Fallback на SQLite
+        await loadColumns();
+      }
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Ошибка загрузки досок: $e';
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Загрузить текущую месячную доску
+  Future<void> loadCurrentBoard() async {
+    try {
+      _isLoadingCurrentBoard = true;
+      _error = null;
+      notifyListeners();
+
+      await loadColumns();
+
+      _isLoadingCurrentBoard = false;
+      _isEmpty = _columns.isEmpty;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Ошибка загрузки доски: $e';
+      _isLoadingCurrentBoard = false;
+      notifyListeners();
+    }
+  }
+
+  /// Загрузить архивированные доски
+  Future<void> loadArchivedBoards() async {
+    try {
+      _isLoadingArchivedBoards = true;
+      _error = null;
+      notifyListeners();
+
+      // Попытаться загрузить с API
+      try {
+        _archivedBoards = await _apiService.getArchivedBoards();
+      } catch (e) {
+        // Fallback на пустой список для теста
+        _archivedBoards = [];
+      }
+
+      _isLoadingArchivedBoards = false;
+      _isEmpty = _archivedBoards.isEmpty;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Ошибка загрузки архивированных досок: $e';
+      _isLoadingArchivedBoards = false;
+      notifyListeners();
+    }
+  }
 
   Future<void> loadColumns() async {
     _columns = await DatabaseHelper.instance.getKanbanColumns();
@@ -98,6 +195,26 @@ class KanbanProvider with ChangeNotifier {
       column.cards.removeWhere((c) => c.id == cardId);
     }
     await DatabaseHelper.instance.deleteKanbanCard(cardId);
+    notifyListeners();
+  }
+
+  /// Очистить ошибку
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+
+  /// Сбросить состояние
+  void reset() {
+    _columns = [];
+    _currentBoard = null;
+    _archivedBoards = [];
+    _isLoadingColumns = false;
+    _isLoadingArchivedBoards = false;
+    _isLoadingCurrentBoard = false;
+    _isLoading = false;
+    _error = null;
+    _isEmpty = false;
     notifyListeners();
   }
 }
