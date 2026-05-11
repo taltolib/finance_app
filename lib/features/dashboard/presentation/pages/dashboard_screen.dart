@@ -43,7 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('HUMO Finance'),
+        title: const Text('Главная'),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
