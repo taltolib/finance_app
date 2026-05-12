@@ -5,7 +5,7 @@ class AppColors {
   static const Color green = Color(0xFF58CC02);
   // static const Color blackGreen = Color(0xFF46A302);
 
-  static const Color blue = Color(0xFF1CB0F6);
+  static const Color blue = Color(0xFF25B4C7);
   static const Color blueDark =Color(0xFF1B4E8F);
   static const Color orange = Color(0xFFFFA500);
   // static const Color darkOrange = Color(0xFFCC8400);
@@ -19,9 +19,9 @@ class AppColors {
   ////THEME COLORS
 
   static const Color backgroundWhite = Color(0xFFF2F2F7);
-  static const Color backgroundAcceptsWhite = Color(0xFFFFFFFF);
-  static const Color backgroundDark = Color(0xFF121212);
-  static const Color backgroundAcceptsDark = Color(0xFF1E1E1E);
+  static const Color backgroundAcceptsWhite =Color(0xFFE9F2FF);
+  static const Color backgroundDark = Color(0xFF1D2125);
+  static const Color backgroundAcceptsDark = Color(0xFF1D2125);
 
   // static const Color backgroundAcceptsWhite = Color(0xFFFFFFFF);
 
