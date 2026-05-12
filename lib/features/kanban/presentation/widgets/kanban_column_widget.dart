@@ -39,6 +39,8 @@ class KanbanColumnWidget extends StatelessWidget {
   void _showColumnMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withOpacity(0.60),
       builder: (_) => _ColumnMenuSheet(
