@@ -4,8 +4,9 @@ import 'package:finance_app/core/state/providers/theme_provider.dart';
 import 'package:finance_app/features/transactions/data/models/transaction.dart';
 import 'package:finance_app/features/transactions/presentation/providers/transaction_provider.dart';
 import '../providers/kanban_provider.dart';
+import '../widgets/kanban_column_widget.dart';
+import '../../data/models/kanban_board_models.dart';
 import '../../data/models/kanban_model.dart' show KanbanColumn, KanbanCard;
-import '../widgets/kanban_column.dart';
 
 class KanbanScreen extends StatefulWidget {
   const KanbanScreen({super.key});
@@ -17,6 +18,7 @@ class KanbanScreen extends StatefulWidget {
 class _KanbanScreenState extends State<KanbanScreen> {
   static const double _columnWidth = 280;
   static const double _columnSpacing = 12;
+  String? _dragTargetId;
 
   @override
   void initState() {
@@ -30,7 +32,8 @@ class _KanbanScreenState extends State<KanbanScreen> {
   @override
   Widget build(BuildContext context) {
     final kanbanProvider = context.watch<KanbanProvider>();
-    final colors =context.watch<ThemeProvider>().isDark;
+    final transactionProvider = context.watch<TransactionProvider>();
+    final colors = context.watch<ThemeProvider>().isDark;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -45,10 +48,8 @@ class _KanbanScreenState extends State<KanbanScreen> {
               fit: BoxFit.cover,
             ),
           )
-              : Positioned.fill(child: Image.asset(
-              'assets/images/kanban_bg_dark.png',
-              fit: BoxFit.cover,
-            ),),
+              : Positioned.fill(
+            child: Image.asset('assets/images/kanban_bg_dark.png', fit: BoxFit.cover,),),
           // Subtle dark overlay for readability
           Positioned.fill(
             child: Container(
@@ -68,7 +69,7 @@ class _KanbanScreenState extends State<KanbanScreen> {
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -78,18 +79,20 @@ class _KanbanScreenState extends State<KanbanScreen> {
                             child: SizedBox(
                               width: _columnWidth,
                               child: KanbanColumnWidget(
-                                column: column,
-                                onCardMoved: (card, toColumnId) {
+                                column: _mapColumnToModel(column, transactionProvider),
+                                isDragTarget: _dragTargetId == column.id,
+                                onDragHover: (columnId) {
+                                  setState(() {
+                                    _dragTargetId = columnId;
+                                  });
+                                },
+                                onCardDropped: (data) {
                                   kanbanProvider.moveCard(
-                                    card.id,
+                                    data.cardId,
+                                    data.fromColumnId,
                                     column.id,
-                                    toColumnId,
                                   );
                                 },
-                                onCardUpdated: (card) {
-                                  kanbanProvider.updateCard(card, column.id);
-                                },
-                                onCardDeleted: kanbanProvider.deleteCard,
                                 onAddCard: () => _addCardToColumn(column),
                               ),
                             ),
@@ -140,6 +143,60 @@ class _KanbanScreenState extends State<KanbanScreen> {
       context: context,
       builder: (context) => const AddColumnDialog(),
     );
+  }
+
+  KanbanColumnModel _mapColumnToModel(KanbanColumn column, TransactionProvider transactionProvider) {
+    return KanbanColumnModel(
+      id: column.id,
+      title: column.title,
+      isSystem: false,
+      cards: column.cards
+          .map((card) => _mapCardToModel(card, transactionProvider, column.id))
+          .toList(),
+    );
+  }
+
+  KanbanCardModel _mapCardToModel(KanbanCard card, TransactionProvider transactionProvider, String columnId) {
+    Transaction? transaction;
+    if (card.transactionId != null) {
+      for (final item in transactionProvider.transactions) {
+        if (item.id == card.transactionId) {
+          transaction = item;
+          break;
+        }
+      }
+    }
+
+    return KanbanCardModel(
+      id: card.id,
+      place: transaction?.location ?? card.note ?? 'Карточка',
+      amount: transaction?.amount ?? 0,
+      date: _formatDate(transaction?.dateTime ?? card.createdAt),
+      columnId: columnId,
+    );
+  }
+
+  String _formatDate(DateTime dateTime) {
+    const monthNames = [
+      '',
+      'янв',
+      'фев',
+      'мар',
+      'апр',
+      'май',
+      'июн',
+      'июл',
+      'авг',
+      'сен',
+      'окт',
+      'ноя',
+      'дек',
+    ];
+    final day = dateTime.day.toString().padLeft(2, '0');
+    final month = monthNames[dateTime.month];
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '$day $month в $hour:$minute';
   }
 
   void _addCardToColumn(KanbanColumn column) {

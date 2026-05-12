@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/colors/theme_custom.dart';
+
 class AppSelectionSheet extends StatelessWidget {
   final Widget? header;
   final Widget body;
@@ -16,13 +18,13 @@ class AppSelectionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final background = Theme.of(context).scaffoldBackgroundColor;
+    final colors = Theme.of(context).extension<AppThemeColors>()!;
 
     return SafeArea(
       top: false,
       child: Container(
         decoration: BoxDecoration(
-          color: background,
+          color: colors.background,
           borderRadius:  BorderRadius.vertical(
             top:heightRadius ?? Radius.circular(28),
           ),
