@@ -33,21 +33,17 @@ class KanbanProvider with ChangeNotifier {
   String? get error => _error;
   bool get isEmpty => _isEmpty;
 
-  /// Инициализировать доски - попробовать загрузить с API, fallback на SQLite
+  /// Инициализировать доски
   Future<void> initializeBoards() async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      // Попытаться загрузить с API
       try {
         final response = await _apiService.getCurrentBoard();
         _currentBoard = response['data'] as Map<String, dynamic>;
-        // Парсить колонки из ответа API
-        // TODO: реализовать после получения структуры API ответа
       } catch (e) {
-        // Fallback на SQLite
         await loadColumns();
       }
 
@@ -86,11 +82,9 @@ class KanbanProvider with ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      // Попытаться загрузить с API
       try {
         _archivedBoards = await _apiService.getArchivedBoards();
       } catch (e) {
-        // Fallback на пустой список для теста
         _archivedBoards = [];
       }
 
@@ -115,21 +109,9 @@ class KanbanProvider with ChangeNotifier {
   Future<void> _initializeDefaultColumns() async {
     final defaultColumns = [
       KanbanColumn(
-        id: 'all',
-        title: 'Все карты',
+        id: 'unsorted',
+        title: 'Неразобранные',
         color: Colors.blue,
-        cards: [],
-      ),
-      KanbanColumn(
-        id: 'income',
-        title: 'Доходы',
-        color: Colors.green,
-        cards: [],
-      ),
-      KanbanColumn(
-        id: 'expense',
-        title: 'Расходы',
-        color: Colors.red,
         cards: [],
       ),
     ];
@@ -153,10 +135,76 @@ class KanbanProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// ✅ Переименовать колонку
+  Future<void> renameColumn(String columnId, String newTitle) async {
+    final index = _columns.indexWhere((c) => c.id == columnId);
+    if (index == -1) return;
+
+    _columns[index].title = newTitle;
+
+    // Попробовать обновить через API если есть currentBoard
+    if (_currentBoard != null) {
+      try {
+        final boardId = _currentBoard!['id']?.toString() ?? '';
+        if (boardId.isNotEmpty) {
+          await _apiService.updateColumn(
+            boardId: boardId,
+            columnId: columnId,
+            title: newTitle,
+          );
+        }
+      } catch (_) {
+        // Fallback — обновление только локально
+      }
+    }
+
+    notifyListeners();
+  }
+
+  /// ✅ Удалить колонку (с переносом карточек в «Неразобранные»)
+  Future<void> deleteColumn(String columnId) async {
+    final index = _columns.indexWhere((c) => c.id == columnId);
+    if (index == -1) return;
+
+    final deletedColumn = _columns[index];
+
+    // Перенести карточки в «Неразобранные» если они там есть
+    final unsortedIndex = _columns.indexWhere((c) => c.id == 'unsorted');
+    if (unsortedIndex != -1 && deletedColumn.cards.isNotEmpty) {
+      for (final card in deletedColumn.cards) {
+        _columns[unsortedIndex].cards.add(card);
+        await DatabaseHelper.instance.updateKanbanCard(card, 'unsorted');
+      }
+    } else {
+      // Удалить карточки из БД
+      for (final card in deletedColumn.cards) {
+        await DatabaseHelper.instance.deleteKanbanCard(card.id);
+      }
+    }
+
+    _columns.removeAt(index);
+
+    // Попробовать удалить через API
+    if (_currentBoard != null) {
+      try {
+        final boardId = _currentBoard!['id']?.toString() ?? '';
+        if (boardId.isNotEmpty) {
+          await _apiService.deleteColumn(
+            boardId: boardId,
+            columnId: columnId,
+          );
+        }
+      } catch (_) {
+        // Fallback — удаление только локально
+      }
+    }
+
+    notifyListeners();
+  }
+
   Future<void> updateColumnTitle(String columnId, String newTitle) async {
     final column = _columns.firstWhere((c) => c.id == columnId);
     column.title = newTitle;
-    // In a real app, you'd update this in DB too
     notifyListeners();
   }
 
@@ -167,7 +215,8 @@ class KanbanProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> moveCard(String cardId, String fromColumnId, String toColumnId) async {
+  Future<void> moveCard(
+      String cardId, String fromColumnId, String toColumnId) async {
     final fromColumn = _columns.firstWhere((c) => c.id == fromColumnId);
     final card = fromColumn.cards.firstWhere((c) => c.id == cardId);
 
@@ -176,16 +225,32 @@ class KanbanProvider with ChangeNotifier {
     toColumn.cards.add(card);
 
     await DatabaseHelper.instance.updateKanbanCard(card, toColumnId);
+
+    // Попробовать синхронизировать через API
+    if (_currentBoard != null) {
+      try {
+        final boardId = _currentBoard!['id']?.toString() ?? '';
+        if (boardId.isNotEmpty) {
+          await _apiService.moveCard(
+            boardId: boardId,
+            cardId: cardId,
+            toColumnId: toColumnId,
+          );
+        }
+      } catch (_) {
+        // Fallback — перемещение только локально
+      }
+    }
+
     notifyListeners();
   }
 
   Future<void> updateCard(KanbanCard card, String columnId) async {
     await DatabaseHelper.instance.updateKanbanCard(card, columnId);
-    // Refresh local state
     final column = _columns.firstWhere((c) => c.id == columnId);
-    final index = column.cards.indexWhere((c) => c.id == card.id);
-    if (index != -1) {
-      column.cards[index] = card;
+    final idx = column.cards.indexWhere((c) => c.id == card.id);
+    if (idx != -1) {
+      column.cards[idx] = card;
     }
     notifyListeners();
   }
@@ -198,13 +263,11 @@ class KanbanProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Очистить ошибку
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
-  /// Сбросить состояние
   void reset() {
     _columns = [];
     _currentBoard = null;

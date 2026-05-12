@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../../features/transactions/data/models/transaction.dart';
+import '../../../../features/transactions/presentation/providers/transaction_provider.dart';
 import '../../data/models/kanban_board_models.dart';
+import '../../data/models/kanban_model.dart' show KanbanCard, KanbanColumn;
+import '../providers/kanban_provider.dart';
 import 'kanban_column_widget.dart';
 import 'kanban_theme.dart';
 
@@ -23,8 +28,6 @@ class _BoardViewState extends State<BoardView> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _newColumnController = TextEditingController();
 
-  late List<KanbanColumnModel> _columns;
-
   double _scale = 1;
   int _currentColumnIndex = 0;
   String? _dragTargetId;
@@ -35,7 +38,10 @@ class _BoardViewState extends State<BoardView> {
   @override
   void initState() {
     super.initState();
-    _columns = initialKanbanColumns();
+    // ✅ После первой отрисовки — загружаем транзакции в «Неразобранные»
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncTransactionsToUnsorted();
+    });
   }
 
   @override
@@ -45,9 +51,113 @@ class _BoardViewState extends State<BoardView> {
     super.dispose();
   }
 
+  // ─── Синхронизация транзакций текущего месяца в «Неразобранные» ──────────
+  void _syncTransactionsToUnsorted() {
+    if (!mounted) return;
+
+    final kanbanProvider = context.read<KanbanProvider>();
+    final transactionProvider = context.read<TransactionProvider>();
+
+    // Найти колонку «Неразобранные»
+    final unsortedIndex =
+    kanbanProvider.columns.indexWhere((c) => c.id == 'unsorted');
+    if (unsortedIndex == -1) return;
+
+    final unsortedColumn = kanbanProvider.columns[unsortedIndex];
+
+    // Получить транзакции текущего месяца
+    final monthlyTransactions =
+        transactionProvider.currentMonthTransactions;
+
+    // Найти транзакции которых ещё нет в колонке
+    final existingTransactionIds = unsortedColumn.cards
+        .where((c) => c.transactionId != null)
+        .map((c) => c.transactionId!)
+        .toSet();
+
+    // Добавить все карточки которых нет
+    for (final tx in monthlyTransactions) {
+      if (!existingTransactionIds.contains(tx.id)) {
+        final card = KanbanCard(
+          id: 'tx_${tx.id}',
+          transactionId: tx.id,
+          cardColor: const Color(0xFF1C1C1E),
+          note: tx.location,
+          status: 'Неразобранное',
+          createdAt: tx.dateTime,
+        );
+        // Добавить без повторного сохранения если уже есть
+        kanbanProvider.addCardToColumn('unsorted', card);
+      }
+    }
+  }
+
+  // ─── Map KanbanColumn → KanbanColumnModel для виджета ────────────────────
+  KanbanColumnModel _mapColumnToModel(
+      KanbanColumn column,
+      TransactionProvider transactionProvider,
+      ) {
+    return KanbanColumnModel(
+      id: column.id,
+      title: column.title,
+      isSystem: column.id == 'unsorted',
+      cards: column.cards
+          .map((card) =>
+          _mapCardToModel(card, transactionProvider, column.id))
+          .toList(),
+    );
+  }
+
+  KanbanCardModel _mapCardToModel(
+      KanbanCard card,
+      TransactionProvider transactionProvider,
+      String columnId,
+      ) {
+    Transaction? transaction;
+    if (card.transactionId != null) {
+      for (final item in transactionProvider.transactions) {
+        if (item.id == card.transactionId) {
+          transaction = item;
+          break;
+        }
+      }
+    }
+
+    return KanbanCardModel(
+      id: card.id,
+      place: transaction?.location ?? card.note ?? 'Карточка',
+      amount: transaction?.amount ?? 0,
+      date: _formatDate(transaction?.dateTime ?? card.createdAt),
+      columnId: columnId,
+    );
+  }
+
+  String _formatDate(DateTime dateTime) {
+    const monthNames = [
+      '',
+      'янв',
+      'фев',
+      'мар',
+      'апр',
+      'май',
+      'июн',
+      'июл',
+      'авг',
+      'сен',
+      'окт',
+      'ноя',
+      'дек',
+    ];
+    final day = dateTime.day.toString().padLeft(2, '0');
+    final month = monthNames[dateTime.month];
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '$day $month в $hour:$minute';
+  }
+
+  // ─── Скролл к колонке ─────────────────────────────────────────────────────
   void _scrollToColumn(int index) {
     setState(() => _currentColumnIndex = index);
-
     final target = index * (_columnWidth + _columnSpacing);
     _scrollController.animateTo(
       target,
@@ -57,83 +167,71 @@ class _BoardViewState extends State<BoardView> {
   }
 
   void _onScroll() {
-    final index = (_scrollController.offset / (_columnWidth + _columnSpacing))
+    final kanbanProvider = context.read<KanbanProvider>();
+    final index =
+    (_scrollController.offset / (_columnWidth + _columnSpacing))
         .round()
-        .clamp(0, _columns.length);
+        .clamp(0, kanbanProvider.columns.length);
     if (index != _currentColumnIndex) {
       setState(() => _currentColumnIndex = index);
     }
   }
 
-  void _moveCard(KanbanDragData data, String targetColumnId) {
-    if (data.fromColumnId == targetColumnId) return;
-
-    final fromColumn = _columns.firstWhere((c) => c.id == data.fromColumnId);
-    final card = fromColumn.cards.firstWhere((c) => c.id == data.cardId);
-
-    setState(() {
-      _columns = _columns.map((column) {
-        if (column.id == data.fromColumnId) {
-          return column.copyWith(
-            cards: column.cards.where((c) => c.id != data.cardId).toList(),
-          );
-        }
-
-        if (column.id == targetColumnId) {
-          return column.copyWith(
-            cards: [
-              ...column.cards,
-              card.copyWith(columnId: targetColumnId),
-            ],
-          );
-        }
-
-        return column;
-      }).toList();
-
-      _dragTargetId = null;
-    });
-  }
-
+  // ─── Добавить колонку ─────────────────────────────────────────────────────
   void _addColumn() {
     final title = _newColumnController.text.trim();
     if (title.isEmpty) return;
 
-    setState(() {
-      _columns = [
-        ..._columns,
-        KanbanColumnModel(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          title: title,
-          isSystem: false,
-          cards: const [],
-        ),
-      ];
-      _newColumnController.clear();
-      _showAddColumn = false;
-    });
+    context
+        .read<KanbanProvider>()
+        .addColumn(title, const Color(0xFF1C1C1E));
+    _newColumnController.clear();
+    setState(() => _showAddColumn = false);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToColumn(_columns.length - 1);
+      final colCount = context.read<KanbanProvider>().columns.length;
+      _scrollToColumn(colCount - 1);
     });
   }
 
-  void _showAddCardInfo() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Тут можно открыть твой bottom sheet выбора транзакции'),
+  // ─── Добавить карточку ────────────────────────────────────────────────────
+  void _addCardToColumn(KanbanColumn column) {
+    final transactionProvider = context.read<TransactionProvider>();
+    final transactions = transactionProvider.transactions;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _AddCardBottomSheet(
+        transactions: transactions,
+        onCardAdded: (tx) {
+          final card = KanbanCard(
+            id: 'tx_${tx.id}_${DateTime.now().millisecondsSinceEpoch}',
+            transactionId: tx.id,
+            cardColor: const Color(0xFF1C1C1E),
+            note: tx.location,
+            status: 'Новое',
+            createdAt: DateTime.now(),
+          );
+          context.read<KanbanProvider>().addCardToColumn(column.id, card);
+        },
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final totalDots = _columns.length + 1;
+    final kanbanProvider = context.watch<KanbanProvider>();
+    final transactionProvider = context.watch<TransactionProvider>();
+    final columns = kanbanProvider.columns;
+    final totalDots = columns.length + 1; // +1 для кнопки «Добавить»
 
     return Container(
       color: KanbanUiColors.bg.withOpacity(0.72),
       child: Column(
         children: [
+          // ─── Header ────────────────────────────────────────────────────
           _BoardHeader(
             isZoomed: _isZoomed,
             onBack: widget.onBack,
@@ -143,6 +241,8 @@ class _BoardViewState extends State<BoardView> {
               });
             },
           ),
+
+          // ─── Board (горизонтальный скролл) ────────────────────────────
           Expanded(
             child: NotificationListener<ScrollNotification>(
               onNotification: (notification) {
@@ -161,17 +261,23 @@ class _BoardViewState extends State<BoardView> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ..._columns.map(
-                        (column) {
+                      // ─── Колонки ───────────────────────────────────────
+                      ...columns.map(
+                            (column) {
+                          final model = _mapColumnToModel(
+                            column,
+                            transactionProvider,
+                          );
                           return Padding(
                             padding: const EdgeInsets.only(
                               right: _columnSpacing,
                             ),
                             child: SizedBox(
                               width: _columnWidth,
-                              height: double.infinity,
+                              // ✅ Убрали фиксированный height — колонка
+                              // растягивается по содержимому
                               child: KanbanColumnWidget(
-                                column: column,
+                                column: model,
                                 isDragTarget: _dragTargetId == column.id,
                                 onDragHover: (columnId) {
                                   setState(() {
@@ -179,25 +285,38 @@ class _BoardViewState extends State<BoardView> {
                                   });
                                 },
                                 onCardDropped: (data) {
-                                  _moveCard(data, column.id);
+                                  kanbanProvider.moveCard(
+                                    data.cardId,
+                                    data.fromColumnId,
+                                    column.id,
+                                  );
+                                  setState(() => _dragTargetId = null);
                                 },
-                                onAddCard: _showAddCardInfo,
+                                onAddCard: () => _addCardToColumn(column),
+                                // ✅ Переименование
+                                onEditColumn: (columnId, currentTitle) {
+                                  _showRenameDialog(context, columnId, currentTitle);
+                                },
+                                // ✅ Удаление
+                                onDeleteColumn: (columnId) {
+                                  kanbanProvider.deleteColumn(columnId);
+                                },
                               ),
                             ),
                           );
                         },
                       ),
+
+                      // ─── Кнопка «+ Добавить колонку» ──────────────────
                       SizedBox(
                         width: _columnWidth,
                         child: _AddColumnCard(
                           showForm: _showAddColumn,
                           controller: _newColumnController,
                           onOpen: () {
-                            setState(() {
-                              _showAddColumn = true;
-                            });
+                            setState(() => _showAddColumn = true);
                             WidgetsBinding.instance.addPostFrameCallback((_) {
-                              _scrollToColumn(_columns.length);
+                              _scrollToColumn(columns.length);
                             });
                           },
                           onCancel: () {
@@ -215,6 +334,8 @@ class _BoardViewState extends State<BoardView> {
               ),
             ),
           ),
+
+          // ─── Dots indicator ────────────────────────────────────────────
           _DotsIndicator(
             total: totalDots,
             currentIndex: _currentColumnIndex,
@@ -224,8 +345,81 @@ class _BoardViewState extends State<BoardView> {
       ),
     );
   }
+
+  // ─── Диалог переименования ────────────────────────────────────────────────
+  void _showRenameDialog(
+      BuildContext context,
+      String columnId,
+      String currentTitle,
+      ) {
+    final controller = TextEditingController(text: currentTitle);
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.7),
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KanbanUiColors.bgCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Переименовать колонку',
+          style: kanbanText(size: 17, weight: FontWeight.w700),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: kanbanText(size: 14),
+          cursorColor: KanbanUiColors.blue,
+          decoration: InputDecoration(
+            hintText: 'Название колонки',
+            hintStyle: kanbanText(size: 14, color: KanbanUiColors.textMuted),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.07),
+            contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: KanbanUiColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: KanbanUiColors.blue),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              'Отмена',
+              style: kanbanText(size: 14, color: KanbanUiColors.textMuted),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: KanbanUiColors.blue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () {
+              final newTitle = controller.text.trim();
+              if (newTitle.isNotEmpty) {
+                context.read<KanbanProvider>().renameColumn(columnId, newTitle);
+                Navigator.of(ctx).pop();
+              }
+            },
+            child: Text(
+              'Сохранить',
+              style: kanbanText(size: 14, weight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    ).then((_) => controller.dispose());
+  }
 }
 
+// ─── Board Header ─────────────────────────────────────────────────────────────
 class _BoardHeader extends StatelessWidget {
   final bool isZoomed;
   final VoidCallback onBack;
@@ -239,12 +433,28 @@ class _BoardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    const months = [
+      '',
+      'января',
+      'февраля',
+      'марта',
+      'апреля',
+      'мая',
+      'июня',
+      'июля',
+      'августа',
+      'сентября',
+      'октября',
+      'ноября',
+      'декабря'
+    ];
+    final monthName = months[now.month];
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: KanbanUiColors.border),
-        ),
+        border: Border(bottom: BorderSide(color: KanbanUiColors.border)),
       ),
       child: Row(
         children: [
@@ -252,11 +462,7 @@ class _BoardHeader extends StatelessWidget {
             onPressed: onBack,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-            icon: const Icon(
-              Icons.arrow_back,
-              color: KanbanUiColors.blue,
-              size: 24,
-            ),
+            icon: const Icon(Icons.arrow_back, color: KanbanUiColors.blue, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -264,19 +470,13 @@ class _BoardHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Доска мая',
-                  style: kanbanText(
-                    size: 18,
-                    weight: FontWeight.w700,
-                  ),
+                  'Доска $monthName',
+                  style: kanbanText(size: 18, weight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Разбор расходов за месяц',
-                  style: kanbanText(
-                    size: 12,
-                    color: KanbanUiColors.textMuted,
-                  ),
+                  style: kanbanText(size: 12, color: KanbanUiColors.textMuted),
                 ),
               ],
             ),
@@ -307,6 +507,7 @@ class _BoardHeader extends StatelessWidget {
   }
 }
 
+// ─── Add Column Card ──────────────────────────────────────────────────────────
 class _AddColumnCard extends StatelessWidget {
   final bool showForm;
   final TextEditingController controller;
@@ -363,10 +564,7 @@ class _AddColumnCard extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               'Название колонки',
-              style: kanbanText(
-                size: 13,
-                color: KanbanUiColors.textDim,
-              ),
+              style: kanbanText(size: 13, color: KanbanUiColors.textDim),
             ),
           ),
           const SizedBox(height: 10),
@@ -377,16 +575,11 @@ class _AddColumnCard extends StatelessWidget {
             cursorColor: KanbanUiColors.blue,
             decoration: InputDecoration(
               hintText: 'Например: Транспорт',
-              hintStyle: kanbanText(
-                size: 14,
-                color: KanbanUiColors.textMuted,
-              ),
+              hintStyle: kanbanText(size: 14, color: KanbanUiColors.textMuted),
               filled: true,
               fillColor: Colors.white.withOpacity(0.07),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
+              contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(color: KanbanUiColors.border),
@@ -432,10 +625,7 @@ class _AddColumnCard extends StatelessWidget {
                   onPressed: onCancel,
                   child: Text(
                     'Отмена',
-                    style: kanbanText(
-                      size: 13,
-                      color: KanbanUiColors.textMuted,
-                    ),
+                    style: kanbanText(size: 13, color: KanbanUiColors.textMuted),
                   ),
                 ),
               ),
@@ -447,6 +637,7 @@ class _AddColumnCard extends StatelessWidget {
   }
 }
 
+// ─── Dots Indicator ───────────────────────────────────────────────────────────
 class _DotsIndicator extends StatelessWidget {
   final int total;
   final int currentIndex;
@@ -467,9 +658,8 @@ class _DotsIndicator extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: List.generate(
           total,
-          (index) {
+              (index) {
             final isActive = currentIndex == index;
-
             return GestureDetector(
               onTap: () => onTap(index),
               child: AnimatedContainer(
@@ -480,12 +670,100 @@ class _DotsIndicator extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isActive
                       ? KanbanUiColors.blue
-                      : Colors.white.withOpacity(index == total - 1 ? 0.12 : 0.18),
+                      : Colors.white.withOpacity(
+                    index == total - 1 ? 0.12 : 0.18,
+                  ),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Add Card Bottom Sheet ────────────────────────────────────────────────────
+class _AddCardBottomSheet extends StatelessWidget {
+  final List<Transaction> transactions;
+  final ValueChanged<Transaction> onCardAdded;
+
+  const _AddCardBottomSheet({
+    required this.transactions,
+    required this.onCardAdded,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.sizeOf(context).height * 0.7,
+      decoration: const BoxDecoration(
+        color: KanbanUiColors.bgCard,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Добавить транзакцию',
+              style: kanbanText(size: 18, weight: FontWeight.w700),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: transactions.isEmpty
+                  ? Center(
+                child: Text(
+                  'Нет транзакций за текущий месяц',
+                  style:
+                  kanbanText(size: 14, color: KanbanUiColors.textMuted),
+                ),
+              )
+                  : ListView.builder(
+                itemCount: transactions.length,
+                itemBuilder: (context, index) {
+                  final tx = transactions[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.08),
+                      ),
+                    ),
+                    child: ListTile(
+                      title: Text(
+                        tx.location,
+                        style: kanbanText(size: 14, weight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        '${tx.amount.toStringAsFixed(0)} UZS',
+                        style: kanbanText(
+                          size: 12,
+                          color: KanbanUiColors.red,
+                        ),
+                      ),
+                      onTap: () {
+                        onCardAdded(tx);
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
