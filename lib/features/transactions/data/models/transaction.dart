@@ -6,12 +6,12 @@ enum TransactionType { income, expense }
 class Transaction {
   final String id;
   final TransactionType type;
-  final double amount;
-  final String location;
-  final String cardNumber;
-  final DateTime dateTime;
-  final double balanceAfter;
-  final String rawText;
+  final double amount;/// Количество
+  final String location; /// Откуда
+  final String cardNumber; /// карта номер *1119
+  final DateTime dateTime; /// 2026-05-07
+  final double balanceAfter;/// Балан после расходов(остаток)
+  final String rawText; //// Оригинальное сообщение
 
   Transaction({
     required this.id,

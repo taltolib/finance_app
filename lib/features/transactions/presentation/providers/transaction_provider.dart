@@ -3,6 +3,7 @@ import 'package:finance_app/shared/database/database_helper.dart' show DatabaseH
 import '../../data/models/transaction.dart';
 
 class TransactionProvider extends ChangeNotifier {
+  // Массив транзакции
   List<Transaction> _transactions = [];
   bool _isLoading = false;
   String? _error;
@@ -10,7 +11,9 @@ class TransactionProvider extends ChangeNotifier {
   // Текущий выбранный месяц для фильтрации
   DateTime _selectedMonth = DateTime.now();
 
+  /// Даю транзакция для внешного чтение и только
   List<Transaction> get transactions => _transactions;
+
   bool get isLoading => _isLoading;
   String? get error => _error;
   DateTime get selectedMonth => _selectedMonth;

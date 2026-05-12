@@ -14,7 +14,7 @@ class ArchiveTileWidget extends StatelessWidget {
   final String title;
   final VoidCallback? onTap;
   final Widget? child;
-  final Color colorBorder;
+  final Color? colorBorder;
   final Color colorBackG;
   final Color titleColor;
 
@@ -23,7 +23,7 @@ class ArchiveTileWidget extends StatelessWidget {
     required this.title,
     this.onTap,
     this.child,
-    required this.colorBorder,
+    this.colorBorder,
     required this.colorBackG,
     required this.titleColor,
   });
@@ -38,7 +38,7 @@ class ArchiveTileWidget extends StatelessWidget {
         decoration: BoxDecoration(
           color: colorBackG,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: colorBorder, width: 1),
+          border: Border.all(color: colorBorder ?? Colors.transparent, width: 1),
         ),
         child: Row(
           children: [

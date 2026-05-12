@@ -1,6 +1,7 @@
 import 'package:finance_app/shared/database/database_helper.dart' show DatabaseHelper;
 import 'package:finance_app/core/state/providers/theme_provider.dart';
 import 'package:finance_app/features/transactions/presentation/providers/transaction_provider.dart';
+import 'core/navigation/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/share_import/presentation/bloc/share_intent_bloc.dart';
 import 'package:flutter/material.dart';
@@ -45,60 +46,6 @@ void main() async {
   );
 }
 
-final GoRouter _router = GoRouter(
-  routes: [
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const MainScreen(),
-    ),
-    GoRoute(
-      path: '/auth/phone',
-      name: 'phone',
-      builder: (context, state) {
-        return ChangeNotifierProvider(
-          create: (_) => AuthProvider(),
-          child: PhoneAuthPage(
-            onPhoneSubmitted: (phone) {
-              context.go('/auth/otp', extra: phone);
-            },
-          ),
-        );
-      },
-    ),
-    GoRoute(
-      path: '/auth/otp',
-      name: 'otp',
-      builder: (context, state) {
-        final phone = state.extra as String? ?? '';
-
-        return MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => AuthProvider()),
-            ChangeNotifierProvider(create: (_) => OtpProvider()),
-          ],
-          child: OtpPage(
-            phone: phone,
-            onOTPVerified: () {
-              context.go('/auth/password');
-            },
-          ),
-        );
-      },
-    ),
-    GoRoute(
-      path: '/auth/password',
-      name: 'password',
-      builder: (context, state) {
-        // Placeholder for password page
-        return Scaffold(
-          body: Center(
-            child: Text('Password Page Placeholder'),
-          ),
-        );
-      },
-    ),
-  ],
-);
 
 class HumoTrackerApp extends StatelessWidget {
   final GetInitialSharedTextUseCase getInitialSharedText;
@@ -135,7 +82,7 @@ class HumoTrackerApp extends StatelessWidget {
           return MaterialApp.router(
             title: 'HUMO Finance Tracker',
             theme: themeProvider.isDark ? AppTheme.dark : AppTheme.light,
-            routerConfig: _router,
+            routerConfig: appRouter,
             debugShowCheckedModeBanner: false,
           );
         },

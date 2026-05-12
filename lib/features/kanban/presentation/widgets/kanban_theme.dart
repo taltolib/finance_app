@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../../../core/state/providers/theme_provider.dart';
+import '../../../../core/theme/colors/theme_custom.dart';
 
 class KanbanUiColors {
   static const bg = Color(0xFF1D2125);
@@ -43,8 +47,8 @@ class KanbanBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDark;
     return Stack(
       children: [
         Positioned.fill(
@@ -53,14 +57,6 @@ class KanbanBackground extends StatelessWidget {
                 ? 'assets/images/kanban_bg_dark.png'
                 : 'assets/images/kanban_bg.png',
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) {
-              return const ColoredBox(color: KanbanUiColors.bg);
-            },
-          ),
-        ),
-        Positioned.fill(
-          child: Container(
-            color: Colors.black.withOpacity(0.15),
           ),
         ),
         child,
