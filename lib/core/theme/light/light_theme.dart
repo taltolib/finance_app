@@ -7,8 +7,8 @@ class LightTheme {
     useMaterial3: true,
     extensions: const [
       AppThemeColors(
-        background: AppColors.backgroundWhite,
-        backgroundLight: AppColors.backgroundAcceptsWhite,
+        background: AppColors.backgroundAcceptsWhite,
+        backgroundLight: AppColors.backgroundWhite,
         border: AppColors.borderWhite,
         more: AppColors.moreWhite,
         text: AppColors.textDark,
