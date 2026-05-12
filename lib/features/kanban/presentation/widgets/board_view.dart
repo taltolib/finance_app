@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import '../../../../core/theme/colors/theme_custom.dart';
 import '../../../../features/transactions/data/models/transaction.dart';
 import '../../../../features/transactions/presentation/providers/transaction_provider.dart';
+import '../../../../generated/fonts/app_fonts.dart';
 import '../../data/models/kanban_board_models.dart';
 import '../../data/models/kanban_model.dart' show KanbanCard, KanbanColumn;
+import '../pages/kanban_screen.dart';
 import '../providers/kanban_provider.dart';
+import 'add_card_bottom_sheet.dart';
 import 'kanban_column_widget.dart';
 import 'kanban_theme.dart';
 
@@ -200,7 +203,7 @@ class _BoardViewState extends State<BoardView> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _AddCardBottomSheet(
+      builder: (context) => AddCardBottomSheet(
         transactions: transactions,
         onCardAdded: (tx) {
           final card = KanbanCard(
@@ -261,11 +264,12 @@ class _BoardViewState extends State<BoardView> {
       'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
     ];
 
+    final colors = Theme.of(context).extension<AppThemeColors>()!;
     return Scaffold(
       backgroundColor: Colors.transparent,
       // ─── AppBar как на фото ───────────────────────────────────────────────
       appBar: AppBar(
-        backgroundColor: KanbanUiColors.bg.withOpacity(0.95),
+        backgroundColor:Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: KanbanUiColors.blue),
@@ -276,13 +280,7 @@ class _BoardViewState extends State<BoardView> {
           children: [
             Text(
               'Доска ${months[now.month]}',
-              style: kanbanText(size: 17, weight: FontWeight.w700),
-            ),
-            Text(
-              _isZoomed
-                  ? 'Обзор доски: все колонки уменьшены'
-                  : 'Разбор расходов за месяц',
-              style: kanbanText(size: 11, color: KanbanUiColors.textMuted),
+              style: AppFonts.mulish.s18w700(color: colors.text),
             ),
           ],
         ),
@@ -569,7 +567,7 @@ class _BoardViewState extends State<BoardView> {
   }
 }
 
-// ─── Add Column Card ──────────────────────────────────────────────────────────
+
 class _AddColumnCard extends StatelessWidget {
   final bool showForm;
   final TextEditingController controller;
@@ -706,7 +704,7 @@ class _DotsIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: KanbanUiColors.bg.withOpacity(0.72),
+
       padding: const EdgeInsets.only(top: 10, bottom: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -736,87 +734,3 @@ class _DotsIndicator extends StatelessWidget {
 }
 
 // ─── Add Card Bottom Sheet ────────────────────────────────────────────────────
-class _AddCardBottomSheet extends StatelessWidget {
-  final List<Transaction> transactions;
-  final ValueChanged<Transaction> onCardAdded;
-
-  const _AddCardBottomSheet({
-    required this.transactions,
-    required this.onCardAdded,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Container(
-        height: MediaQuery.sizeOf(context).height * 0.7,
-        decoration: const BoxDecoration(
-          color: KanbanUiColors.bgCard,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text('Добавить транзакцию',
-                  style: kanbanText(size: 18, weight: FontWeight.w700)),
-              const SizedBox(height: 16),
-              Expanded(
-                child: transactions.isEmpty
-                    ? Center(
-                  child: Text('Нет транзакций за текущий месяц',
-                      style: kanbanText(
-                          size: 14,
-                          color: KanbanUiColors.textMuted)),
-                )
-                    : ListView.builder(
-                  itemCount: transactions.length,
-                  itemBuilder: (context, index) {
-                    final tx = transactions[index];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: Colors.white.withOpacity(0.08)),
-                      ),
-                      child: ListTile(
-                        title: Text(tx.location,
-                            style: kanbanText(
-                                size: 14, weight: FontWeight.w600)),
-                        subtitle: Text(
-                          '${tx.amount.toStringAsFixed(0)} UZS',
-                          style: kanbanText(
-                            size: 12,
-                            color: tx.type == TransactionType.expense
-                                ? KanbanUiColors.red
-                                : KanbanUiColors.blue,
-                          ),
-                        ),
-                        onTap: () {
-                          onCardAdded(tx);
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

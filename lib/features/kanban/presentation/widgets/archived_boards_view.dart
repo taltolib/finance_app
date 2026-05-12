@@ -15,7 +15,7 @@ class ArchivedBoardsView extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withOpacity(0.65),
+      barrierColor: Colors.red.withOpacity(0.65),
       builder: (_) {
         return Container(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),

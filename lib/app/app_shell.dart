@@ -2,6 +2,7 @@ import 'package:finance_app/core/theme/colors/theme_custom.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../core/theme/colors/app_colors.dart';
+import '../features/kanban/presentation/pages/kanban_boards_screen.dart';
 import '../features/share_import/presentation/bloc/share_intent_bloc.dart';
 import '../features/share_import/presentation/pages/share_preview_page.dart';
 import '../features/dashboard/presentation/pages/dashboard_screen.dart';
@@ -24,7 +25,7 @@ class _MainScreenState extends State<MainScreen> {
   static final List<Widget> _screens = [
     const DashboardScreen(),
     const AnalyticsScreen(),
-    const KanbanScreen(),
+    const KanbanBoardsScreen(),
     const SettingsScreen(),
   ];
 
