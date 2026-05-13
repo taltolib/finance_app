@@ -1,23 +1,22 @@
 import 'package:flutter/material.dart';
 
 class OtpProvider extends ChangeNotifier {
+  static const int codeLength = 5;
+
   final List<TextEditingController> controllers = List.generate(
-    6,
+    codeLength,
     (_) => TextEditingController(),
   );
 
   final List<FocusNode> focusNodes = List.generate(
-    6,
+    codeLength,
     (_) => FocusNode(),
   );
 
-  String get code {
-    return controllers.map((controller) => controller.text).join();
-  }
+  String get code => controllers.map((controller) => controller.text).join();
 
-  bool get isComplete {
-    return code.length == 6 && controllers.every((c) => c.text.isNotEmpty);
-  }
+  bool get isComplete =>
+      code.length == codeLength && controllers.every((c) => c.text.isNotEmpty);
 
   void onChanged(int index, String value) {
     if (value.length > 1) {
@@ -43,7 +42,6 @@ class OtpProvider extends ChangeNotifier {
     for (final controller in controllers) {
       controller.clear();
     }
-
     focusNodes.first.requestFocus();
     notifyListeners();
   }
@@ -53,11 +51,9 @@ class OtpProvider extends ChangeNotifier {
     for (final controller in controllers) {
       controller.dispose();
     }
-
     for (final focusNode in focusNodes) {
       focusNode.dispose();
     }
-
     super.dispose();
   }
 }

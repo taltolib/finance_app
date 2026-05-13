@@ -1,11 +1,11 @@
-/// Модели для аутентификации
+library;
 
 class SendCodeResponse {
   final bool success;
   final String? message;
   final String? phoneCodeHash;
 
-  SendCodeResponse({
+  const SendCodeResponse({
     required this.success,
     this.message,
     this.phoneCodeHash,
@@ -18,26 +18,20 @@ class SendCodeResponse {
       phoneCodeHash: json['phone_code_hash']?.toString(),
     );
   }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'success': success,
-      'message': message,
-      'phone_code_hash': phoneCodeHash,
-    };
-  }
 }
 
 class VerifyCodeResponse {
   final bool success;
   final String? message;
   final String? sessionToken;
+  final bool passwordRequired;
   final UserInfo? user;
 
-  VerifyCodeResponse({
+  const VerifyCodeResponse({
     required this.success,
     this.message,
     this.sessionToken,
+    this.passwordRequired = false,
     this.user,
   });
 
@@ -46,19 +40,13 @@ class VerifyCodeResponse {
       success: json['success'] == true,
       message: json['message']?.toString(),
       sessionToken: json['session_token']?.toString(),
+      passwordRequired: json['requires_password'] == true ||
+          json['password_required'] == true ||
+          (json['message']?.toString().toLowerCase().contains('пароль') ?? false),
       user: json['user'] is Map<String, dynamic>
           ? UserInfo.fromJson(json['user'] as Map<String, dynamic>)
           : null,
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'success': success,
-      'message': message,
-      'session_token': sessionToken,
-      'user': user?.toJson(),
-    };
   }
 }
 
@@ -71,7 +59,7 @@ class UserInfo {
   final String? username;
   final String? photoBase64;
 
-  UserInfo({
+  const UserInfo({
     required this.id,
     required this.phoneNumber,
     this.name,
@@ -93,26 +81,19 @@ class UserInfo {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'phone': phoneNumber,
-      'name': name,
-      'first_name': firstName,
-      'last_name': lastName,
-      'username': username,
-      'photo_base64': photoBase64,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'phone': phoneNumber,
+        'name': name,
+        'first_name': firstName,
+        'last_name': lastName,
+        'username': username,
+        'photo_base64': photoBase64,
+      };
 
   String get fullName {
-    if (name != null && name!.trim().isNotEmpty) {
-      return name!.trim();
-    }
-
-    final first = firstName ?? '';
-    final last = lastName ?? '';
-    return '$first $last'.trim();
+    if (name != null && name!.trim().isNotEmpty) return name!.trim();
+    return '${firstName ?? ''} ${lastName ?? ''}'.trim();
   }
 
   String get displayName {

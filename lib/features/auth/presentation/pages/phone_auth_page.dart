@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/state/providers/theme_provider.dart';
 import '../../../../core/theme/colors/app_colors.dart';
+import '../../../../core/theme/colors/theme_custom.dart';
 import '../../../../generated/fonts/app_fonts.dart';
 import '../../../../shared/widgets/push_button.dart';
 import '../../../../shared/widgets/top_snackbar.dart';
@@ -77,8 +79,8 @@ class _PhoneAuthPageState extends State {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension()!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = Theme.of(context).extension<AppThemeColors>()!;
+    final isDark = context.read<ThemeProvider>().isDark;
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
@@ -164,7 +166,7 @@ class _PhoneAuthPageState extends State {
                                 vertical: 16,
                               ),
                               decoration: BoxDecoration(
-                                color: colors.backgroundAccepts,
+                                color: colors.background,
                                 borderRadius: BorderRadius.circular(15),
                                 border: Border.all(
                                   color: Colors.white12,
@@ -184,7 +186,7 @@ class _PhoneAuthPageState extends State {
                                   horizontal: 16,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: colors.backgroundAccepts,
+                                  color: colors.background,
                                   borderRadius: BorderRadius.circular(15),
                                   border: Border.all(
                                     color: Colors.white12,

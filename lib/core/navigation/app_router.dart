@@ -1,13 +1,12 @@
 import 'package:finance_app/features/auth/presentation/pages/otp_page.dart';
 import 'package:finance_app/features/auth/presentation/pages/phone_auth_page.dart';
-import 'package:finance_app/features/auth/presentation/providers/auth_provider.dart';
-import 'package:finance_app/features/auth/presentation/providers/otp_provider.dart';
+import 'package:finance_app/features/info/info_bot_page.dart';
 import 'package:finance_app/features/kanban/presentation/pages/kanban_boards_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
 import '../../app/app_shell.dart';
+import '../../core/navigation/startup_gate.dart';
 import '../../features/analytics/presentation/pages/analytics_screen.dart';
 import '../../features/dashboard/presentation/pages/dashboard_screen.dart';
 import '../../features/kanban/presentation/widgets/archived_boards_view.dart';
@@ -15,13 +14,18 @@ import '../../features/settings/presentation/pages/settings_screen.dart';
 
 /// Централизованный роутер приложения
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/start',
   debugLogDiagnostics: true,
   routes: [
-    // ─── Главный Shell (bottom nav) ───────────────────────────────────────
     GoRoute(
-      path: '/',
-      name: 'home',
+      path: '/start',
+      name: 'startup',
+      builder: (context, state) => const StartupGate(),
+    ),
+
+    GoRoute(
+      path: '/main',
+      name: 'main',
       builder: (context, state) => const MainScreen(),
     ),
 
@@ -29,16 +33,11 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/auth/phone',
       name: 'phone',
-      builder: (context, state) {
-        return ChangeNotifierProvider(
-          create: (_) => AuthProvider(),
-          child: PhoneAuthPage(
-            onPhoneSubmitted: (phone) {
-              context.go('/auth/otp', extra: phone);
-            },
-          ),
-        );
-      },
+      builder: (context, state) => PhoneAuthPage(
+        onPhoneSubmitted: (phone) {
+          context.go('/auth/otp', extra: phone);
+        },
+      ),
     ),
 
     GoRoute(
@@ -46,17 +45,11 @@ final GoRouter appRouter = GoRouter(
       name: 'otp',
       builder: (context, state) {
         final phone = state.extra as String? ?? '';
-        return MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => AuthProvider()),
-            ChangeNotifierProvider(create: (_) => OtpProvider()),
-          ],
-          child: OtpPage(
-            phone: phone,
-            onOTPVerified: () {
-              context.go('/');
-            },
-          ),
+        return OtpPage(
+          phone: phone,
+          onOTPVerified: () {
+            context.go('/main');
+          },
         );
       },
     ),
@@ -94,6 +87,12 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const DashboardScreen(),
     ),
 
+    GoRoute(
+      path: '/info',
+      name: 'info',
+      builder: (context, state) => const InfoBotPage(),
+    ),
+
     // ─── Settings ─────────────────────────────────────────────────────────
     GoRoute(
       path: '/settings',
@@ -111,9 +110,9 @@ final GoRouter appRouter = GoRouter(
         children: [
           const Icon(Icons.error_outline, color: Color(0xFFFF4B4B), size: 48),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'Страница не найдена',
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w700,

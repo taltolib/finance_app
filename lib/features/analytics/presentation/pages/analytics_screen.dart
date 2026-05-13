@@ -1,8 +1,9 @@
-import 'dart:math' as math;
 
 import 'package:finance_app/core/state/providers/theme_provider.dart';
 import 'package:finance_app/core/theme/colors/app_colors.dart';
 import 'package:finance_app/core/theme/colors/theme_custom.dart';
+import 'package:finance_app/features/analytics/data/models/chart_point_model.dart';
+import 'package:finance_app/features/analytics/presentation/providers/analytics_provider.dart';
 import 'package:finance_app/features/transactions/data/models/transaction.dart';
 import 'package:finance_app/features/transactions/presentation/providers/transaction_provider.dart';
 import 'package:finance_app/generated/fonts/app_fonts.dart';
@@ -11,7 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
- import '../../../dashboard/presentation/widgets/transaction_tile.dart';
+import '../../../dashboard/presentation/widgets/transaction_tile.dart';
 import '../widgets/analytics_line_chart_painter.dart';
 
 enum AnalyticsPeriod {
@@ -32,8 +33,6 @@ class AnalyticsScreen extends StatefulWidget {
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
   static const int _previewTransactionCount = 3;
 
-  AnalyticsPeriod _selectedPeriod = AnalyticsPeriod.month;
-
   @override
   void initState() {
     super.initState();
@@ -41,44 +40,40 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<TransactionProvider>().loadTransactions();
+      context.read<AnalyticsProvider>().restorePeriodAndLoad();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final analyticsProvider = context.watch<AnalyticsProvider>();
     final provider = context.watch<TransactionProvider>();
     final themeProvider = context.watch<ThemeProvider>();
     final colors = Theme.of(context).extension<AppThemeColors>()!;
 
     final isDark = themeProvider.isDark;
-
+    final selectedPeriod = _analyticsPeriodFromValue(analyticsProvider.selectedPeriod);
+    final selectedMonth = provider.selectedMonth;
     final allTransactions = provider.transactions;
     final selectedTransactions = _filterTransactionsByPeriod(
       transactions: allTransactions,
-      selectedMonth: provider.selectedMonth,
-      period: _selectedPeriod,
+      selectedMonth: selectedMonth,
+      period: selectedPeriod,
     );
 
-    final totalIncome = _calculateTotal(
+    final totalIncome = analyticsProvider.summary?.income ?? _calculateTotal(
       selectedTransactions,
       TransactionType.income,
     );
 
-    final totalExpense = _calculateTotal(
+    final totalExpense = analyticsProvider.summary?.expense ?? _calculateTotal(
       selectedTransactions,
       TransactionType.expense,
     );
 
-    final currentBalance = totalIncome - totalExpense;
-
-    final chartData = _buildChartData(
-      transactions: selectedTransactions,
-      period: _selectedPeriod,
-      selectedMonth: provider.selectedMonth,
-    );
-
-    final previewTransactions =
-    selectedTransactions.take(_previewTransactionCount).toList();
+    final currentBalance = analyticsProvider.summary?.total ?? totalIncome - totalExpense;
+    final chartData = _chartDataFromPoints(analyticsProvider.chartData);
+    final previewTransactions = selectedTransactions.take(_previewTransactionCount).toList();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -110,7 +105,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
           SafeArea(
             child: RefreshIndicator(
-              onRefresh: () => provider.loadTransactions(),
+              onRefresh: () async {
+                await provider.loadTransactions();
+                await analyticsProvider.loadAnalytics();
+              },
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -120,11 +118,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     const SizedBox(height: 20),
 
                     _AnalyticsPeriodSelector(
-                      selectedPeriod: _selectedPeriod,
+                      selectedPeriod: selectedPeriod,
                       onChanged: (period) {
-                        setState(() {
-                          _selectedPeriod = period;
-                        });
+                        analyticsProvider.changePeriod(_analyticsPeriodValue(period));
                       },
                     ),
 
@@ -147,7 +143,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                             colorBackG: colors.backgroundLight,
                             titleColor: AppColors.green,
                             sumColor: colors.text,
-                            shadowColor: colors.shadow,
+                            shadowColor: colors.shadow.withOpacity(0.5),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -158,7 +154,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                             colorBackG: colors.backgroundLight,
                             titleColor: AppColors.red,
                             sumColor: colors.text,
-                            shadowColor: colors.shadow,
+                            shadowColor: colors.shadow.withOpacity(0.5),
                           ),
                         ),
                       ],
@@ -175,7 +171,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                             colorBackG: colors.backgroundLight,
                             titleColor: AppColors.blue,
                             sumColor: colors.text,
-                            shadowColor: colors.shadow,
+                            shadowColor: colors.shadow.withOpacity(0.5),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -186,7 +182,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                             colorBackG: colors.backgroundLight,
                             titleColor: AppColors.orange,
                             sumColor: colors.text,
-                            shadowColor: colors.shadow,
+                            shadowColor: colors.shadow.withOpacity(0.5),
                           ),
                         ),
                       ],
@@ -227,8 +223,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
                           return TransactionTile(
                             transaction: transaction,
-                            onDelete: () =>
-                                provider.deleteTransaction(transaction.id),
                           );
                         },
                       ),
@@ -242,7 +236,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(
-                                color: colors.text.withOpacity(0.45),
+                                color: AppColors.blue.withOpacity(0.5),
                                 width: 1,
                               ),
                               shape: RoundedRectangleBorder(
@@ -258,7 +252,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                   builder: (_) => AnalyticsTransactionsScreen(
                                     title: 'Все транзакции',
                                     periodLabel: _getPeriodTitle(
-                                      _selectedPeriod,
+                                      selectedPeriod,
                                       provider.selectedMonth,
                                     ),
                                     transactions: selectedTransactions,
@@ -269,7 +263,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                             child: Text(
                               'Смотреть все',
                               style: AppFonts.mulish.s16w700(
-                                color: colors.text,
+                                color: AppColors.blue,
                               ),
                             ),
                           ),
@@ -346,88 +340,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       0,
           (sum, transaction) => sum + transaction.amount,
     );
-  }
-
-  _ChartData _buildChartData({
-    required List<Transaction> transactions,
-    required AnalyticsPeriod period,
-    required DateTime selectedMonth,
-  }) {
-    final pointCount = _getPointCount(period);
-    final income = List<double>.filled(pointCount, 0);
-    final expense = List<double>.filled(pointCount, 0);
-
-    for (final transaction in transactions) {
-      final index = _getTransactionPointIndex(
-        transaction.dateTime,
-        period,
-        selectedMonth,
-        pointCount,
-      );
-
-      if (index < 0 || index >= pointCount) continue;
-
-      if (transaction.type == TransactionType.income) {
-        income[index] += transaction.amount;
-      } else {
-        expense[index] += transaction.amount;
-      }
-    }
-
-    return _ChartData(
-      incomePoints: income,
-      expensePoints: expense,
-    );
-  }
-
-  int _getPointCount(AnalyticsPeriod period) {
-    switch (period) {
-      case AnalyticsPeriod.year:
-        return 12;
-      case AnalyticsPeriod.threeMonths:
-        return 3;
-      case AnalyticsPeriod.month:
-        return 4;
-      case AnalyticsPeriod.week:
-        return 7;
-      case AnalyticsPeriod.day:
-        return 6;
-    }
-  }
-
-  int _getTransactionPointIndex(
-      DateTime date,
-      AnalyticsPeriod period,
-      DateTime selectedMonth,
-      int pointCount,
-      ) {
-    switch (period) {
-      case AnalyticsPeriod.year:
-        return date.month - 1;
-
-      case AnalyticsPeriod.threeMonths:
-        final start = DateTime(selectedMonth.year, selectedMonth.month - 2, 1);
-        return (date.year - start.year) * 12 + date.month - start.month;
-
-      case AnalyticsPeriod.month:
-        final day = date.day;
-        if (day <= 7) return 0;
-        if (day <= 14) return 1;
-        if (day <= 21) return 2;
-        return 3;
-
-      case AnalyticsPeriod.week:
-        return date.weekday - 1;
-
-      case AnalyticsPeriod.day:
-        final hour = date.hour;
-        if (hour < 4) return 0;
-        if (hour < 8) return 1;
-        if (hour < 12) return 2;
-        if (hour < 16) return 3;
-        if (hour < 20) return 4;
-        return 5;
-    }
   }
 
   String _formatMoney(double value) {
@@ -586,6 +498,44 @@ class _AnalyticsChartCard extends StatelessWidget {
   }
 }
 
+AnalyticsPeriod _analyticsPeriodFromValue(String value) {
+  switch (value) {
+    case 'year':
+      return AnalyticsPeriod.year;
+    case '3months':
+      return AnalyticsPeriod.threeMonths;
+    case 'month':
+      return AnalyticsPeriod.month;
+    case 'week':
+      return AnalyticsPeriod.week;
+    case 'day':
+      return AnalyticsPeriod.day;
+    default:
+      return AnalyticsPeriod.month;
+  }
+}
+
+String _analyticsPeriodValue(AnalyticsPeriod period) {
+  switch (period) {
+    case AnalyticsPeriod.year:
+      return 'year';
+    case AnalyticsPeriod.threeMonths:
+      return '3months';
+    case AnalyticsPeriod.month:
+      return 'month';
+    case AnalyticsPeriod.week:
+      return 'week';
+    case AnalyticsPeriod.day:
+      return 'day';
+  }
+}
+
+_ChartData _chartDataFromPoints(List<ChartPointModel> points) {
+  return _ChartData(
+    incomePoints: points.map((item) => item.income).toList(),
+    expensePoints: points.map((item) => item.expense).toList(),
+  );
+}
 
 class _ChartData {
   final List<double> incomePoints;
@@ -647,7 +597,7 @@ class AnalyticsTransactionsScreen extends StatelessWidget {
           ),
 
           SafeArea(
-            child: SingleChildScrollView(
+            child:   transactions.length  >= 5 ? SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
@@ -690,8 +640,55 @@ class AnalyticsTransactionsScreen extends StatelessWidget {
 
                         return TransactionTile(
                           transaction: transaction,
-                          onDelete: () =>
-                              provider.deleteTransaction(transaction.id),
+                        );
+                      },
+                    ),
+
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ) : Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+
+                  Center(
+                    child: Text(
+                      periodLabel,
+                      style: AppFonts.mulish.s18w700(color: colors.text),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  if (transactions.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 110,
+                          horizontal: 50,
+                        ),
+                        child: Text(
+                          'Нет транзакций за этот период',
+                          textAlign: TextAlign.center,
+                          style: AppFonts.mulish.s16w400(
+                            color: colors.text.withOpacity(0.60),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: transactions.length,
+                      itemBuilder: (context, index) {
+                        final transaction = transactions[index];
+
+                        return TransactionTile(
+                          transaction: transaction,
                         );
                       },
                     ),

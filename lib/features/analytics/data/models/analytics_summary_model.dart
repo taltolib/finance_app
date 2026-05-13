@@ -1,4 +1,3 @@
-/// Модель для summary аналитики
 class AnalyticsSummaryModel {
   final double income;
   final double expense;
@@ -8,7 +7,7 @@ class AnalyticsSummaryModel {
   final DateTime fromDate;
   final DateTime toDate;
 
-  AnalyticsSummaryModel({
+  const AnalyticsSummaryModel({
     required this.income,
     required this.expense,
     required this.total,
@@ -19,30 +18,39 @@ class AnalyticsSummaryModel {
   });
 
   factory AnalyticsSummaryModel.fromJson(Map<String, dynamic> json) {
+    final summary = json['summary'] is Map<String, dynamic>
+        ? json['summary'] as Map<String, dynamic>
+        : json;
+
     return AnalyticsSummaryModel(
-      income: (json['income'] as num?)?.toDouble() ?? 0.0,
-      expense: (json['expense'] as num?)?.toDouble() ?? 0.0,
-      total: (json['total'] as num?)?.toDouble() ?? 0.0,
-      transactionsCount: json['transactions_count'] ?? 0,
-      period: json['period'] ?? 'month',
-      fromDate: json['from_date'] != null
-          ? DateTime.parse(json['from_date'] as String)
-          : DateTime.now(),
-      toDate: json['to_date'] != null
-          ? DateTime.parse(json['to_date'] as String)
-          : DateTime.now(),
+      income: _num(summary['income_total'] ?? summary['income']),
+      expense: _num(summary['expense_total'] ?? summary['expense']),
+      total: _num(summary['net_total'] ?? summary['total']),
+      transactionsCount: (summary['transactions_count'] as num?)?.toInt() ?? 0,
+      period: (json['period'] ?? summary['period'] ?? 'day').toString(),
+      fromDate: _parseDate(json['from'] ?? summary['from_date']),
+      toDate: _parseDate(json['to'] ?? summary['to_date']),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'income': income,
-      'expense': expense,
-      'total': total,
-      'transactions_count': transactionsCount,
-      'period': period,
-      'from_date': fromDate.toIso8601String(),
-      'to_date': toDate.toIso8601String(),
-    };
+  Map<String, dynamic> toJson() => {
+        'income': income,
+        'expense': expense,
+        'total': total,
+        'transactions_count': transactionsCount,
+        'period': period,
+        'from_date': fromDate.toIso8601String(),
+        'to_date': toDate.toIso8601String(),
+      };
+
+  static double _num(dynamic raw) {
+    if (raw is num) return raw.toDouble();
+    return double.tryParse(raw?.toString() ?? '') ?? 0.0;
+  }
+
+  static DateTime _parseDate(dynamic raw) {
+    final value = raw?.toString();
+    if (value == null || value.isEmpty) return DateTime.now();
+    return DateTime.tryParse(value) ?? DateTime.now();
   }
 }

@@ -1,9 +1,9 @@
 import 'package:finance_app/core/theme/colors/app_colors.dart';
 import 'package:finance_app/generated/fonts/app_fonts.dart';
-import 'package:finance_app/shared/widgets/view_all_button.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:finance_app/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:finance_app/features/transactions/presentation/providers/transaction_provider.dart';
 import 'package:finance_app/core/state/providers/theme_provider.dart';
 import '../../../../core/theme/colors/theme_custom.dart';
@@ -26,25 +26,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TransactionProvider>().loadTransactions();
+      context.read<DashboardProvider>().loadCurrentMonth();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<TransactionProvider>();
+    final dashboardProvider = context.watch<DashboardProvider>();
+    final transactionProvider = context.watch<TransactionProvider>();
     final themeProvider = context.watch<ThemeProvider>();
     final colors = Theme.of(context).extension<AppThemeColors>()!;
 
     final isDark = themeProvider.isDark;
-    final currentBalance = provider.currentBalance;
-    final monthlyIncome = provider.totalIncome;
-    final monthlyExpense = provider.totalExpense;
-    final transactions = provider.currentMonthTransactions;
-    final previewTransactions =
-    transactions.take(_previewTransactionCount).toList();
+    final summary = dashboardProvider.summary;
+    final currentBalance = summary?.balance ?? transactionProvider.currentBalance;
+    final monthlyIncome = summary?.income ?? transactionProvider.totalIncome;
+    final monthlyExpense = summary?.expense ?? transactionProvider.totalExpense;
+    final transactions = transactionProvider.currentMonthTransactions;
+    final previewTransactions = transactions.take(_previewTransactionCount).toList();
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -71,7 +73,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           SafeArea(
             child: RefreshIndicator(
-              onRefresh: () => provider.loadTransactions(),
+              onRefresh: () => dashboardProvider.loadCurrentMonth(),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -88,7 +90,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             colorBackG: colors.backgroundLight,
                             titleColor: AppColors.green,
                             sumColor: colors.text,
-                            shadowColor: colors.shadow,
+                            shadowColor: colors.shadow.withOpacity(0.5),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -99,7 +101,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             colorBackG: colors.backgroundLight,
                             titleColor: AppColors.red,
                             sumColor: colors.text,
-                            shadowColor: colors.shadow,
+                            shadowColor: colors.shadow.withOpacity(0.5),
                           ),
                         ),
                       ],
@@ -109,12 +111,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Expanded(
                           child: StatSummaryWidget(
-                            title: 'Итог',
-                            sum: currentBalance.toString(),
+                            title: 'Баланс',
+                            sum: transactionProvider.currentBalance.toString(),
                             colorBackG: colors.backgroundLight,
                             titleColor: AppColors.blue,
                             sumColor: colors.text,
-                            shadowColor: colors.shadow,
+                            shadowColor: colors.shadow.withOpacity(0.5),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -125,7 +127,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             colorBackG: colors.backgroundLight,
                             titleColor: AppColors.orange,
                             sumColor: colors.text,
-                            shadowColor: colors.shadow,
+                            shadowColor: colors.shadow.withOpacity(0.5),
                           ),
                         ),
                       ],
@@ -140,11 +142,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             size: 24,
                             color: colors.text,
                           ),
-                          onPressed: provider.previousMonth,
+                          onPressed: dashboardProvider.previousMonth,
                         ),
                         Text(
                           DateFormat('MMMM yyyy', 'ru_RU')
-                              .format(provider.selectedMonth),
+                              .format(dashboardProvider.selectedMonth),
                           style: AppFonts.mulish.s18w700(color: colors.text),
                         ),
                         IconButton(
@@ -153,7 +155,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             size: 24,
                             color: colors.text,
                           ),
-                          onPressed: provider.nextMonth,
+                          onPressed: dashboardProvider.nextMonth,
                         ),
                       ],
                     ),
@@ -167,7 +169,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 20),
                     if (transactions.isEmpty)
                       Center(
                         child: Padding(
@@ -193,8 +195,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                           return TransactionTile(
                             transaction: transaction,
-                            onDelete: () =>
-                                provider.deleteTransaction(transaction.id),
                           );
                         },
                       ),
@@ -206,7 +206,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(
-                                color: colors.text.withOpacity(0.45),
+                                color: AppColors.blue.withOpacity(0.5),
                                 width: 1,
                               ),
                               shape: RoundedRectangleBorder(
@@ -227,7 +227,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             child: Text(
                               'Смотреть все',
                               style: AppFonts.mulish.s16w700(
-                                color: colors.text,
+                                color: AppColors.blue,
                               ),
                             ),
                           ),

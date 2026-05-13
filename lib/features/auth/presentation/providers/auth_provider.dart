@@ -1,5 +1,6 @@
 /// Auth Provider
 /// Управление состоянием авторизации
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -30,6 +31,7 @@ class AuthProvider extends ChangeNotifier {
   bool _isVerifyingCode = false;
   String? _error;
   bool _isAuthenticated = false;
+  bool _passwordRequired = false;
 
   String? get phoneNumber => _phoneNumber;
   String? get phoneCodeHash => _phoneCodeHash;
@@ -41,6 +43,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isVerifyingCode => _isVerifyingCode;
   String? get error => _error;
   bool get isAuthenticated => _isAuthenticated;
+  bool get passwordRequired => _passwordRequired;
 
   Future<void> initialize() async {
     try {
@@ -68,6 +71,22 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> restoreSession() async {
+    await initialize();
+  }
+
+  void invalidateSession() {
+    _phoneNumber = null;
+    _phoneCodeHash = null;
+    _sessionToken = null;
+    _user = null;
+    _isAuthenticated = false;
+    _error = null;
+    ApiService().clearSessionToken();
+    _secureStorage.delete(key: 'session_token');
+    notifyListeners();
+  }
+
   Future<bool> sendCode(String phoneNumber) async {
     try {
       _isSendingCode = true;
@@ -80,6 +99,7 @@ class AuthProvider extends ChangeNotifier {
       if (response.success && response.phoneCodeHash != null) {
         _phoneNumber = phoneNumber;
         _phoneCodeHash = response.phoneCodeHash;
+        _passwordRequired = false;
         _isSendingCode = false;
         _status = AuthStatus.success;
         notifyListeners();
@@ -100,7 +120,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> verifyCode(String code) async {
+  Future<bool> verifyCode(String code, {String? password}) async {
     if (_phoneNumber == null || _phoneNumber!.isEmpty) {
       _error = 'Номер телефона не установлен';
       _status = AuthStatus.error;
@@ -125,12 +145,14 @@ class AuthProvider extends ChangeNotifier {
         phoneNumber: _phoneNumber!,
         phoneCodeHash: _phoneCodeHash!,
         code: code,
+        password: password,
       );
 
       if (response.success && response.sessionToken != null) {
         _sessionToken = response.sessionToken;
         _user = response.user;
         _isAuthenticated = true;
+        _passwordRequired = false;
 
         await _secureStorage.write(
           key: 'session_token',
@@ -145,6 +167,7 @@ class AuthProvider extends ChangeNotifier {
         return true;
       }
 
+      _passwordRequired = response.passwordRequired;
       _error = response.message ?? 'Ошибка проверки кода';
       _isVerifyingCode = false;
       _status = AuthStatus.error;

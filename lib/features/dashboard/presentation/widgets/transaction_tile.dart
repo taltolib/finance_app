@@ -1,62 +1,92 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:finance_app/features/transactions/data/models/transaction.dart';
+import '../../../../core/theme/colors/app_colors.dart';
+import '../../../../core/theme/colors/theme_custom.dart';
+import '../../../../generated/fonts/app_fonts.dart';
 
 
 class TransactionTile extends StatelessWidget {
   final Transaction transaction;
-  final VoidCallback onDelete;
 
   const TransactionTile({
     super.key,
     required this.transaction,
-    required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
     final isIncome = transaction.type == TransactionType.income;
-    final color = isIncome ?  Colors.lightBlue :  Colors.lightBlue;
+    final colors = Theme.of(context).extension<AppThemeColors>()!;
+    final color = isIncome ?  AppColors.green :  AppColors.red;
     final icon = isIncome ? Icons.arrow_upward : Icons.arrow_downward;
 
-    return Dismissible(
-      key: Key(transaction.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        color: Colors.red,
-        child: const Icon(Icons.delete, color: Colors.white),
-      ),
-      onDismissed: (direction) => onDelete(),
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 8),
-        child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: color.withValues(alpha: 0.2),
-            child: Icon(icon, color: color),
-          ),
-          title: Text(
-            transaction.location,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          subtitle: Text(
-            DateFormat('dd.MM.yyyy HH:mm', 'ru_RU').format(transaction.dateTime),
-          ),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        height: 90,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: colors.background,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: colors.text.withOpacity(0.2), width: 0.5),
+            boxShadow: [
+              BoxShadow(
+                color: colors.shadow,
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              )
+            ]
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15 , vertical: 10),
+          child: Row(
             children: [
-              Text(
-                '${isIncome ? '+' : '-'}${NumberFormat('#,##0.00', 'ru_RU').format(transaction.amount)} UZS',
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                flex: 1,
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                     border:  Border.all(color: color.withOpacity(0.2), width: 0.5),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child:  Icon(icon, color: color,size: 20),
                 ),
               ),
-              Text(
-                'Баланс: ${NumberFormat('#,##0.00', 'ru_RU').format(transaction.balanceAfter)} UZS',
-                style: const TextStyle(fontSize: 12, color: Colors.lightBlue,),
+              const SizedBox(width: 15,),
+              Expanded(
+                flex: 4,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      transaction.location,
+                      style: AppFonts.mulish.s12w700(color: colors.text),
+                    ),
+                    const SizedBox(height: 5,),
+                    Text(
+                      '${isIncome ? '+' : '-'}${NumberFormat('#,##0.00', 'ru_RU').format(transaction.amount)} UZS',
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10,),
+              Expanded(
+                flex:1,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(DateFormat('dd.MM.yyyy HH:mm', 'ru_RU').format(transaction.dateTime),style: AppFonts.mulish.s12w400(color: colors.text.withOpacity(0.5),)),
+                  ],
+                ),
               ),
             ],
           ),

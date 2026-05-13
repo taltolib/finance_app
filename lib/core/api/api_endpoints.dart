@@ -1,38 +1,31 @@
-/// Все доступные endpoints backend-а
+/// Endpoints текущего FastAPI backend-а.
+/// Важно: старые `/boards/*` и `/transactions/latest` убраны, потому что backend
+/// из API_DOCS работает через `/kanban/*`, `/transactions`, `/dashboard`, `/analytics`.
 class ApiEndpoints {
-  // Auth endpoints
+  // Auth
   static const String authSendCode = '/auth/send-code';
   static const String authVerifyCode = '/auth/verify-code';
-  static const String authRefreshToken = '/auth/refresh-token';
+  static const String authMe = '/auth/me';
   static const String authLogout = '/auth/logout';
 
-  // HUMO Bot endpoints
+  // HUMO
   static const String checkBot = '/check-bot';
 
-  // Transactions endpoints
+  // Transactions
   static const String transactions = '/transactions';
-  static const String transactionsLatest = '/transactions/latest';
-  static const String transactionDetail = '/transactions/{id}';
-  static const String transactionCategoryColumn = '/transactions/{id}/category-column';
+  static const String transactionsSync = '/transactions/sync';
 
-  // Analytics endpoints
+  // Dashboard / Analytics
+  static const String dashboard = '/dashboard';
+  static const String analytics = '/analytics';
   static const String analyticsSummary = '/analytics/summary';
   static const String analyticsChart = '/analytics/chart';
 
-  // Boards endpoints
-  static const String boards = '/boards';
-  static const String boardsCurrent = '/boards/current';
-  static const String boardsArchived = '/boards/archived';
-  static const String boardDetail = '/boards/{id}';
-  static const String boardsArchiveExpired = '/boards/archive-expired';
-  static const String boardsMonthStatus = '/boards/month-status';
-
-  // Board Columns endpoints
-  static const String boardColumns = '/boards/{boardId}/columns';
-  static const String boardColumnDetail = '/boards/{boardId}/columns/{columnId}';
-
-  // Board Cards endpoints
-  static const String boardCards = '/boards/{boardId}/columns/{columnId}/cards';
-  static const String boardCardMove = '/boards/{boardId}/cards/{cardId}/move';
-  static const String boardCardDetail = '/boards/{boardId}/cards/{cardId}';
+  // Kanban
+  static const String kanbanCurrent = '/kanban/current';
+  static const String kanbanArchived = '/kanban/archived';
+  static const String kanbanColumns = '/kanban/columns';
+  static const String kanbanColumnDetail = '/kanban/columns/{column_id}';
+  static const String kanbanMoveCard = '/kanban/cards/move';
+  static const String kanbanCategories = '/kanban/categories';
 }
