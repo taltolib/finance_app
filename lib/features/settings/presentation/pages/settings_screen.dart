@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:finance_app/core/state/providers/theme_provider.dart';
 import 'package:finance_app/core/theme/colors/app_colors.dart';
 import 'package:finance_app/core/theme/colors/theme_custom.dart';
+import 'package:finance_app/features/profile/presentation/providers/user_profile_provider.dart';
 import 'package:finance_app/generated/fonts/app_fonts.dart';
 import 'package:finance_app/shared/widgets/custom_show_dialog.dart';
 import 'package:finance_app/shared/widgets/push_button.dart';
@@ -15,7 +18,13 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
+    final profileProvider = context.watch<UserProfileProvider>();
     final colors = Theme.of(context).extension<AppThemeColors>()!;
+
+    final profile = profileProvider.user;
+    final displayName = profile?.fullName.isNotEmpty == true ? profile!.fullName : 'Пользователь';
+    final userName = profile?.username;
+    final photoBase64 = profile?.photoBase64;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -37,7 +46,12 @@ class SettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ProfileHeader(colors: colors, nameUser: '',),
+                _ProfileHeader(
+                  colors: colors,
+                  nameUser: displayName,
+                  nikeName: userName,
+                  photoUrl: photoBase64,
+                ),
                 const SizedBox(height: 36),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -64,19 +78,21 @@ class SettingsScreen extends StatelessWidget {
                         colors: colors,
                         onTap: () => customShowBottomSheetDialog(
                             context,
-                            0.4,
+                            0.2,
                             heightRadius: const Radius.circular(25),
                             Container(),
-                            Text('Вы точно хотите выйти из аккаунта?', style: AppFonts.mulish.s16w400()),
+                            Text('Вы точно хотите выйти из аккаунта?', style: AppFonts.mulish.s16w400(color: colors.text)),
                             PushButton(
                                 language: 'Выйти',
+                                colorText: colors.text,
                                 flagAsset: const SizedBox.shrink(),
                                 onTap: () {},
                                 isSelected: false,
                               color: AppColors.red,
                               colorShadow: AppColors.redDark,
                               border: Border.all(color:AppColors.redDark,width: 1 ),
-                              height: 50,
+                              borderRadius: 15,
+                              height: 80,
                             )
                         ),
                       ),
@@ -101,8 +117,8 @@ class _ProfileHeader extends StatelessWidget {
 
   const _ProfileHeader({
     required this.colors,
-    this.nikeName,
     required this.nameUser,
+    this.nikeName,
     this.photoUrl,
   });
 
@@ -128,13 +144,20 @@ class _ProfileHeader extends StatelessWidget {
                 width: 1,
               ),
             ),
-            child: photoUrl != null
-                ? Image.asset(photoUrl!)
-                : Icon(
-                    Icons.person_outline,
-                    color: colors.text.withOpacity(0.75),
-                    size: 24,
-                  ),
+            child: ClipOval(
+              child: photoUrl != null
+                  ? Image.memory(
+                      base64Decode(photoUrl!),
+                      fit: BoxFit.cover,
+                      width: 54,
+                      height: 54,
+                    )
+                  : Icon(
+                      Icons.person_outline,
+                      color: colors.text.withOpacity(0.75),
+                      size: 24,
+                    ),
+            ),
           ),
           const SizedBox(width: 18),
           Expanded(

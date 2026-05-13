@@ -6,14 +6,20 @@ enum TransactionType { income, expense }
 class Transaction {
   final String id;
   final TransactionType type;
-  final double amount;/// Количество
-  final String location; /// Откуда
-  final String cardNumber; /// карта номер *1119
-  final DateTime dateTime; /// 2026-05-07
-  final double balanceAfter;/// Балан после расходов(остаток)
-  final String rawText; //// Оригинальное сообщение
+  final double amount;
+  final String location;
+  final String cardNumber;
+  final DateTime dateTime;
+  final double balanceAfter;
+  final String rawText;
 
-  Transaction({
+  final String? currency;
+  final String? title;
+  final String? category;
+  final String? categoryTitle;
+  final int? telegramMessageId;
+
+  const Transaction({
     required this.id,
     required this.type,
     required this.amount,
@@ -22,37 +28,74 @@ class Transaction {
     required this.dateTime,
     required this.balanceAfter,
     required this.rawText,
+    this.currency,
+    this.title,
+    this.category,
+    this.categoryTitle,
+    this.telegramMessageId,
   });
+
+  String get merchant => location;
+  String get cardLast4 => cardNumber.replaceAll(RegExp(r'[^0-9]'), '');
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'type': type.index,
+      'type': type.name,
       'amount': amount,
       'location': location,
       'cardNumber': cardNumber,
       'dateTime': dateTime.toIso8601String(),
       'balanceAfter': balanceAfter,
       'rawText': rawText,
+      'currency': currency,
+      'title': title,
+      'category': category,
+      'category_title': categoryTitle,
+      'telegram_message_id': telegramMessageId,
     };
   }
 
   factory Transaction.fromMap(Map<String, dynamic> map) {
     return Transaction(
-      id: map['id'],
-      type: TransactionType.values[map['type']],
-      amount: map['amount'],
-      location: map['location'],
-      cardNumber: map['cardNumber'],
-      dateTime: DateTime.parse(map['dateTime']),
-      balanceAfter: map['balanceAfter'],
-      rawText: map['rawText'],
+      id: (map['id'] ?? '').toString(),
+      type: _parseType(map['type']),
+      amount: _num(map['amount']),
+      location: (map['location'] ?? map['merchant'] ?? map['description'] ?? 'Транзакция').toString(),
+      cardNumber: (map['cardNumber'] ?? map['card_name'] ?? map['card_last4'] ?? '').toString(),
+      dateTime: _parseDate(map['dateTime'] ?? map['datetime'] ?? map['tx_datetime']),
+      balanceAfter: _num(map['balanceAfter'] ?? map['balance']),
+      rawText: (map['rawText'] ?? map['raw_text'] ?? '').toString(),
+      currency: (map['currency'] ?? 'UZS').toString(),
+      title: map['title']?.toString(),
+      category: (map['category'] ?? map['category_id'])?.toString(),
+      categoryTitle: map['category_title']?.toString(),
+      telegramMessageId: map['telegram_message_id'] is int
+          ? map['telegram_message_id'] as int
+          : int.tryParse('${map['telegram_message_id'] ?? ''}'),
     );
+  }
+
+  static TransactionType _parseType(dynamic raw) {
+    if (raw is int) return TransactionType.values[raw.clamp(0, 1)];
+    final value = raw?.toString().toLowerCase().trim();
+    return value == 'income' ? TransactionType.income : TransactionType.expense;
+  }
+
+  static double _num(dynamic raw) {
+    if (raw is num) return raw.toDouble();
+    return double.tryParse(raw?.toString() ?? '') ?? 0.0;
+  }
+
+  static DateTime _parseDate(dynamic raw) {
+    if (raw is DateTime) return raw;
+    final value = raw?.toString();
+    if (value == null || value.isEmpty) return DateTime.now();
+    return DateTime.tryParse(value) ?? DateTime.now();
   }
 
   static Transaction? parse(String rawText) {
     final lines = rawText.split('\n').map((line) => line.trim()).toList();
-
     if (lines.isEmpty) return null;
 
     TransactionType? type;
@@ -68,35 +111,35 @@ class Transaction {
       } else if (line.contains('❌ Списание') || line.contains('➖')) {
         type = TransactionType.expense;
       } else if (line.contains('UZS') && (line.contains('➕') || line.contains('➖'))) {
-        // Парсинг суммы: "50.250,00 UZS" -> 50250.0
         final amountStr = line.replaceAll('UZS', '').replaceAll('➕', '').replaceAll('➖', '').trim();
         final parts = amountStr.split(',');
         if (parts.length == 2) {
-          final whole = parts[0].replaceAll('.', '');
-          final decimal = parts[1];
-          amount = double.tryParse('$whole.$decimal');
+          amount = double.tryParse('${parts[0].replaceAll('.', '')}.${parts[1]}');
         }
       } else if (line.startsWith('📍')) {
         location = line.substring(1).trim();
       } else if (line.startsWith('💳')) {
         cardNumber = line.substring(1).trim();
       } else if (line.startsWith('🕓')) {
-        // "10:56 01.05.2026"
-        final timeStr = line.substring(1).trim();
-        final parts = timeStr.split(' ');
+        final parts = line.substring(1).trim().split(' ');
         if (parts.length == 2) {
-          final time = parts[0];
-          final date = parts[1];
-          final dateTimeStr = '$date $time';
-          dateTime = DateTime.tryParse(dateTimeStr.replaceAll('.', '-').replaceAll(' ', 'T'));
+          final time = parts[0].split(':');
+          final date = parts[1].split('.');
+          if (time.length == 2 && date.length == 3) {
+            dateTime = DateTime(
+              int.parse(date[2]),
+              int.parse(date[1]),
+              int.parse(date[0]),
+              int.parse(time[0]),
+              int.parse(time[1]),
+            );
+          }
         }
       } else if (line.startsWith('💰')) {
         final balanceStr = line.substring(1).replaceAll('UZS', '').trim();
         final parts = balanceStr.split(',');
         if (parts.length == 2) {
-          final whole = parts[0].replaceAll('.', '');
-          final decimal = parts[1];
-          balanceAfter = double.tryParse('$whole.$decimal');
+          balanceAfter = double.tryParse('${parts[0].replaceAll('.', '')}.${parts[1]}');
         }
       }
     }
@@ -115,74 +158,41 @@ class Transaction {
       dateTime: dateTime,
       balanceAfter: balanceAfter,
       rawText: rawText,
+      currency: 'UZS',
     );
   }
 
-  /// Парсер SMS-сообщений от HUMO банка
-  /// Поддерживает разные форматы SMS
   static Transaction? parseFromSms(String smsBody) {
     if (smsBody.isEmpty) return null;
 
     try {
       final body = smsBody.toLowerCase();
-
-      // Определить тип транзакции
       TransactionType type;
-      if (body.contains('popolnenie') || 
-          body.contains('пополнение') ||
-          body.contains('zachislenie') ||
-          body.contains('зачисление')) {
+      if (body.contains('popolnenie') || body.contains('пополнение') || body.contains('zachislenie') || body.contains('зачисление')) {
         type = TransactionType.income;
-      } else if (body.contains('spisanie') || 
-                 body.contains('списание') ||
-                 body.contains('oplata') ||
-                 body.contains('оплата')) {
+      } else if (body.contains('spisanie') || body.contains('списание') || body.contains('oplata') || body.contains('оплата')) {
         type = TransactionType.expense;
       } else {
-        return null; // Не похоже на финансовое SMS
+        return null;
       }
 
-      // Извлечь сумму (ищем число перед UZS)
-      final amountRegex = RegExp(r'(\d[\d\s.,]*)\s*uzs', caseSensitive: false);
-      final amountMatch = amountRegex.firstMatch(smsBody);
+      final amountMatch = RegExp(r'(\d[\d\s.,]*)\s*uzs', caseSensitive: false).firstMatch(smsBody);
       if (amountMatch == null) return null;
-
-      final amountStr = amountMatch.group(1)!
-          .replaceAll(' ', '')
-          .replaceAll('.', '')
-          .replaceAll(',', '.');
-      final amount = double.tryParse(amountStr) ?? 0;
+      final amount = double.tryParse(amountMatch.group(1)!.replaceAll(' ', '').replaceAll('.', '').replaceAll(',', '.')) ?? 0;
       if (amount == 0) return null;
 
-      // Извлечь баланс (второе вхождение числа перед UZS или после "balans")
       double balance = 0;
-      final balanceRegex = RegExp(
-        r'balans[:\s]+(\d[\d\s.,]*)\s*uzs', 
-        caseSensitive: false,
-      );
-      final balanceMatch = balanceRegex.firstMatch(smsBody);
+      final balanceMatch = RegExp(r'balans[:\s]+(\d[\d\s.,]*)\s*uzs', caseSensitive: false).firstMatch(smsBody);
       if (balanceMatch != null) {
-        final balStr = balanceMatch.group(1)!
-            .replaceAll(' ', '')
-            .replaceAll('.', '')
-            .replaceAll(',', '.');
-        balance = double.tryParse(balStr) ?? 0;
+        balance = double.tryParse(balanceMatch.group(1)!.replaceAll(' ', '').replaceAll('.', '').replaceAll(',', '.')) ?? 0;
       }
 
-      // Извлечь номер карты
-      final cardRegex = RegExp(r'\*(\d{4})');
-      final cardMatch = cardRegex.firstMatch(smsBody);
-      final cardNumber = cardMatch != null ? '*${cardMatch.group(1)}' : '*7591';
+      final cardMatch = RegExp(r'\*(\d{4})').firstMatch(smsBody);
+      final cardNumber = cardMatch != null ? '*${cardMatch.group(1)}' : '';
+      final place = _extractMerchantFromSms(smsBody);
 
-      // Извлечь место/мерчант (всё что не является числом и ключевыми словами)
-      String place = _extractMerchantFromSms(smsBody);
-
-      // Извлечь дату (ищем DD.MM.YYYY HH:MM)
       DateTime date = DateTime.now();
-      final dateRegex = RegExp(
-        r'(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})',
-      );
-      final dateMatch = dateRegex.firstMatch(smsBody);
+      final dateMatch = RegExp(r'(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})').firstMatch(smsBody);
       if (dateMatch != null) {
         date = DateTime(
           int.parse(dateMatch.group(3)!),
@@ -202,6 +212,7 @@ class Transaction {
         dateTime: date,
         balanceAfter: balance,
         rawText: smsBody,
+        currency: 'UZS',
       );
     } catch (e) {
       debugPrint('Ошибка парсинга SMS: $e');
@@ -209,9 +220,7 @@ class Transaction {
     }
   }
 
-  /// Вспомогательный метод — извлечь название магазина из SMS
   static String _extractMerchantFromSms(String body) {
-    // Убираем известные паттерны и оставляем название
     final cleaned = body
         .replaceAll(RegExp(r'\d[\d.,\s]*UZS', caseSensitive: false), '')
         .replaceAll(RegExp(r'Balans[:\s]+', caseSensitive: false), '')
@@ -223,9 +232,7 @@ class Transaction {
         .replaceAll(RegExp(r'[.!]'), '')
         .trim();
 
-    // Берём первую непустую "значимую" часть
-    final parts = cleaned.split(RegExp(r'[.,\n]'));
-    for (final part in parts) {
+    for (final part in cleaned.split(RegExp(r'[.,\n]'))) {
       final trimmed = part.trim();
       if (trimmed.length > 2) return trimmed;
     }

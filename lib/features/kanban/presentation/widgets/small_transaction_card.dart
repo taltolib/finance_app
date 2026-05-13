@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/colors/app_colors.dart';
+import '../../../../core/theme/colors/theme_custom.dart';
+import '../../../../generated/fonts/app_fonts.dart';
 import '../../data/models/kanban_board_models.dart';
 import 'kanban_theme.dart';
 
@@ -16,21 +19,19 @@ class SmallTransactionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final amount = card.amount.toStringAsFixed(0).replaceAll('-', '-');
+    final colors = Theme.of(context).extension<AppThemeColors>()!;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
-        color: dragging
-            ? KanbanUiColors.blue.withOpacity(0.18)
-            : Colors.white.withOpacity(0.05),
+        color:colors.background,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: dragging
-              ? KanbanUiColors.blue
-              : Colors.white.withOpacity(0.08),
-        ),
+          color: colors.text.withOpacity(0.08),
+          width: 1
+      ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,34 +46,30 @@ class SmallTransactionCard extends StatelessWidget {
                     card.place,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: kanbanText(
-                      size: 12,
-                      weight: FontWeight.w600,
-                    ),
+                    style: AppFonts.mulish.s12w400(color: colors.text),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 5),
                   Text(
-                    card.date,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: kanbanText(
-                      size: 10,
-                      color: KanbanUiColors.textMuted,
-                    ),
+                    '-$amount',
+                    style: AppFonts.mulish.s14w700(color: AppColors.red),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            amount,
-            style: kanbanText(
-              size: 13,
-              weight: FontWeight.w700,
-              color: KanbanUiColors.red,
-            ),
-          ),
+          const SizedBox(width: 10),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                card.date,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppFonts.mulish.s12w700(color: colors.text.withOpacity(0.5)),),
+
+    ]
+    )
         ],
       ),
     );

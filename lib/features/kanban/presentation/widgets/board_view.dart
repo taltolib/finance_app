@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/theme/colors/app_colors.dart';
 import '../../../../core/theme/colors/theme_custom.dart';
 import '../../../../features/transactions/data/models/transaction.dart';
 import '../../../../features/transactions/presentation/providers/transaction_provider.dart';
@@ -68,7 +69,7 @@ class _BoardViewState extends State<BoardView> {
     final transactionProvider = context.read<TransactionProvider>();
 
     final unsortedIndex =
-    kanbanProvider.columns.indexWhere((c) => c.id == 'unsorted');
+    kanbanProvider.columns.indexWhere((c) => c.id == kanbanProvider.uncategorizedColumnId);
     if (unsortedIndex == -1) return;
 
     final existingTransactionIds = kanbanProvider.columns
@@ -92,7 +93,7 @@ class _BoardViewState extends State<BoardView> {
         status: 'Неразобранное',
         createdAt: tx.dateTime,
       );
-      kanbanProvider.addCardToColumn('unsorted', card);
+      kanbanProvider.addCardToColumn(kanbanProvider.uncategorizedColumnId, card);
       existingTransactionIds.add(tx.id);
     }
   }
@@ -104,7 +105,7 @@ class _BoardViewState extends State<BoardView> {
     return KanbanColumnModel(
       id: column.id,
       title: column.title,
-      isSystem: column.id == 'unsorted',
+      isSystem: column.id == context.read<KanbanProvider>().uncategorizedColumnId,
       cards: column.cards
           .map((card) => _mapCardToModel(card, transactionProvider, column.id))
           .toList(),
@@ -209,7 +210,7 @@ class _BoardViewState extends State<BoardView> {
           final card = KanbanCard(
             id: 'tx_${tx.id}_${DateTime.now().millisecondsSinceEpoch}',
             transactionId: tx.id,
-            cardColor: const Color(0xFF1C1C1E),
+            cardColor: AppColors.blue,
             note: tx.location,
             status: 'Новое',
             createdAt: DateTime.now(),

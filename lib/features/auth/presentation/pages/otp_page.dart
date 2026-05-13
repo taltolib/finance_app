@@ -11,7 +11,7 @@ import '../../../../shared/widgets/top_snackbar.dart';
 import '../providers/auth_provider.dart';
 import '../providers/otp_provider.dart';
 
-class OtpPage extends StatelessWidget {
+class OtpPage extends StatefulWidget {
   final String phone;
   final VoidCallback onOTPVerified;
 
@@ -21,28 +21,42 @@ class OtpPage extends StatelessWidget {
     required this.onOTPVerified,
   });
 
-  Future _handleVerify(BuildContext context) async {
-    final authProvider = context.read();
-    final otpProvider = context.read();
+  @override
+  State<OtpPage> createState() => _OtpPageState();
+}
+
+class _OtpPageState extends State<OtpPage> {
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleVerify(BuildContext context) async {
+    final authProvider = context.read<AuthProvider>();
+    final otpProvider = context.read<OtpProvider>();
     final code = otpProvider.code.trim();
+    final password = _passwordController.text.trim();
 
     if (code.isEmpty) {
       TopSnackBar.show(context, 'Введите код');
       return;
     }
 
-    if (code.length != 6) {
-      TopSnackBar.show(context, 'Введите полный код из 6 цифр');
+    if (code.length != OtpProvider.codeLength) {
+      TopSnackBar.show(context, 'Введите полный код из ${OtpProvider.codeLength} цифр');
       return;
     }
 
-    final success = await authProvider.verifyCode(code);
+    final success = await authProvider.verifyCode(code, password: password.isEmpty ? null : password);
 
     if (!context.mounted) return;
 
     if (success) {
       TopSnackBar.show(context, 'Код подтверждён');
-      onOTPVerified();
+      widget.onOTPVerified();
     } else {
       TopSnackBar.show(
         context,
@@ -53,9 +67,9 @@ class OtpPage extends StatelessWidget {
 
   @override
   Widget  build(BuildContext context) {
-    final colors = Theme.of(context).extension()!;
-    final authProv = context.watch();
-    final otpProv = context.watch();
+    final colors = Theme.of(context).extension<AppThemeColors>()!;
+    final authProv = context.watch<AuthProvider>();
+    final otpProv = context.watch<OtpProvider>();
     final isLoading = authProv.isVerifyingCode;
 
     return Scaffold(
@@ -91,9 +105,9 @@ class OtpPage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              phone.isEmpty
+              widget.phone.isEmpty
                   ? 'Мы отправили код на ваш номер'
-                  : 'Мы отправили код на $phone',
+                  : 'Мы отправили код на ${widget.phone}',
               style: AppFonts.mulish.s14w400(
                 color: Colors.grey,
               ),
@@ -103,7 +117,7 @@ class OtpPage extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(
-                6,
+                otpProv.controllers.length,
                 (i) => _OtpCell(
                   controller: otpProv.controllers[i],
                   focusNode: otpProv.focusNodes[i],
@@ -113,9 +127,31 @@ class OtpPage extends StatelessWidget {
                 ),
               ),
             ),
+            if (authProv.passwordRequired) ...[
+              const SizedBox(height: 40),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: colors.background,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: TextField(
+                  controller: _passwordController,
+                  enabled: !isLoading,
+                  style: TextStyle(color: colors.text),
+                  obscureText: true,
+                  decoration:  InputDecoration(
+                    hintText: 'Пароль',
+                    hintStyle:  AppFonts.mulish.s14w400(color: Colors.grey),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 40),
             PushButton(
-              height: 70,
+              height: 80,
               color: AppColors.blue,
               colorShadow: AppColors.blueDark,
               border: Border.all(
@@ -161,7 +197,7 @@ class _OtpCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension()!;
+    final colors = Theme.of(context).extension<AppThemeColors>()!;
 
     return SizedBox(
       width: 48,
@@ -183,7 +219,7 @@ class _OtpCell extends StatelessWidget {
         decoration: InputDecoration(
           counterText: '',
           filled: true,
-          fillColor: colors.backgroundAccepts,
+          fillColor: colors.background,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(

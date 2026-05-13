@@ -1,5 +1,6 @@
 /// Analytics Provider
 /// Управление состоянием аналитики
+library;
 
 import 'package:flutter/material.dart';
 import '../../data/models/analytics_summary_model.dart';
@@ -10,7 +11,7 @@ class AnalyticsProvider extends ChangeNotifier {
   final AnalyticsApiService _apiService = AnalyticsApiService();
 
   // State
-  String _selectedPeriod = 'month'; // 'year', '3months', 'month', 'week', 'day'
+  String _selectedPeriod = 'day'; // backend default for Flutter
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
   bool _isLoadingChart = false;
@@ -89,6 +90,11 @@ class AnalyticsProvider extends ChangeNotifier {
     await loadAnalytics();
   }
 
+  /// Восстановить предыдущие настройки периода и загрузить аналитику
+  Future<void> restorePeriodAndLoad() async {
+    await loadAnalytics();
+  }
+
   /// Переместиться на предыдущий период
   Future<void> previousPeriod() async {
     switch (_selectedPeriod) {
@@ -151,7 +157,7 @@ class AnalyticsProvider extends ChangeNotifier {
 
   /// Сбросить состояние
   void reset() {
-    _selectedPeriod = 'month';
+    _selectedPeriod = 'day';
     _selectedDate = DateTime.now();
     _isLoading = false;
     _isLoadingChart = false;

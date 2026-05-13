@@ -19,9 +19,9 @@ class AddCardBottomSheet extends StatelessWidget {
       top: false,
       child: Container(
         height: MediaQuery.sizeOf(context).height * 0.7,
-        decoration: const BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        decoration:  BoxDecoration(
+          color: colors.background.withOpacity(0.80),
+          borderRadius:  const BorderRadius.vertical(top: Radius.circular(22)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -52,7 +52,7 @@ class AddCardBottomSheet extends StatelessWidget {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
+                        color: colors.backgroundLight.withOpacity(0.80),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                             color: Colors.white.withOpacity(0.08)),

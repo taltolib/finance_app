@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../../core/state/providers/theme_provider.dart';
 import '../../../../core/theme/colors/app_colors.dart';
 import '../../../../core/theme/colors/theme_custom.dart';
 import '../../../../generated/fonts/app_fonts.dart';
-import '../../../share_import/data/models/transaction.dart';
+import '../../../transactions/data/models/transaction.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
 import '../providers/kanban_provider.dart';
 import '../widgets/kanban_column_widget.dart';
@@ -15,15 +17,24 @@ class KanbanScreen extends StatefulWidget {
   const KanbanScreen({super.key});
 
   @override
-  State createState() => _KanbanScreenState();
+  State<KanbanScreen> createState() => _KanbanScreenState();
 }
 
-class _KanbanScreenState extends State {
+class _KanbanScreenState extends State<KanbanScreen> {
   static const double _columnWidth = 280;
   static const double _columnSpacing = 12;
-  static const double _boardPadding = 16;
+
+  final ScrollController _scrollController = ScrollController();
 
   String? _dragTargetId;
+
+  double _scale = 1;
+  int _currentColumnIndex = 0;
+
+  bool _deleteMode = false;
+  final Set<String> _selectedCardIds = {};
+
+  bool get _isZoomed => _scale < 1;
 
   @override
   void initState() {
@@ -32,73 +43,33 @@ class _KanbanScreenState extends State {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+
+      // ВАЖНО:
+      // Дизайн не трогаем.
+      // Логику загрузки оставляем через KanbanProvider.
+      // Если provider уже подключен к backend /kanban/current,
+      // он сам загрузит колонки и карточки.
       context.read<KanbanProvider>().loadColumns();
-      _syncTransactionsToUnsorted();
     });
   }
-
-  final ScrollController _scrollController = ScrollController();
-  final TextEditingController _newColumnController = TextEditingController();
-
-  double _scale = 1;
-  int _currentColumnIndex = 0;
-
-  bool _deleteMode = false;
-  final Set _selectedCardIds = {};
-
-  bool get _isZoomed => _scale < 1;
 
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-    _newColumnController.dispose();
     super.dispose();
   }
 
-  void _syncTransactionsToUnsorted() {
-    if (!mounted) return;
-    final kanbanProvider = context.read();
-    final transactionProvider = context.read();
-
-    final unsortedIndex =
-        kanbanProvider.columns.indexWhere((c) => c.id == 'unsorted');
-    if (unsortedIndex == -1) return;
-
-    final existingTransactionIds = kanbanProvider.columns
-        .expand((column) => column.cards)
-        .where((card) => card.transactionId != null)
-        .map((card) => card.transactionId!)
-        .toSet();
-
-    final expenseTransactions = transactionProvider.currentMonthTransactions
-        .where((tx) => tx.type == TransactionType.expense)
-        .toList();
-
-    for (final tx in expenseTransactions) {
-      if (existingTransactionIds.contains(tx.id)) continue;
-
-      final card = KanbanCard(
-        id: 'tx_${tx.id}',
-        transactionId: tx.id,
-        cardColor: const Color(0xFF1C1C1E),
-        note: tx.location,
-        status: 'Неразобранное',
-        createdAt: tx.dateTime,
-      );
-      kanbanProvider.addCardToColumn('unsorted', card);
-      existingTransactionIds.add(tx.id);
-    }
-  }
-
   KanbanColumnModel _mapColumnToModel(
-    KanbanColumn column,
-    TransactionProvider transactionProvider,
-  ) {
+      KanbanColumn column,
+      TransactionProvider transactionProvider,
+      ) {
+    final kanbanProvider = context.read<KanbanProvider>();
+
     return KanbanColumnModel(
       id: column.id,
       title: column.title,
-      isSystem: column.id == 'unsorted',
+      isSystem: column.id == kanbanProvider.uncategorizedColumnId,
       cards: column.cards
           .map((card) => _mapCardToModel(card, transactionProvider, column.id))
           .toList(),
@@ -106,15 +77,16 @@ class _KanbanScreenState extends State {
   }
 
   KanbanCardModel _mapCardToModel(
-    KanbanCard card,
-    TransactionProvider transactionProvider,
-    String columnId,
-  ) {
+      KanbanCard card,
+      TransactionProvider transactionProvider,
+      String columnId,
+      ) {
     Transaction? transaction;
+
     if (card.transactionId != null) {
       for (final item in transactionProvider.transactions) {
         if (item.id == card.transactionId) {
-          transaction = item  ;
+          transaction = item;
           break;
         }
       }
@@ -122,11 +94,28 @@ class _KanbanScreenState extends State {
 
     return KanbanCardModel(
       id: card.id,
-      place: transaction?.location ?? card.note ?? 'Карточка',
+      place: _transactionTitle(transaction, card),
       amount: transaction?.amount ?? 0,
       date: _formatDate(transaction?.dateTime ?? card.createdAt),
       columnId: columnId,
     );
+  }
+
+  String _transactionTitle(Transaction? transaction, KanbanCard card) {
+    if (transaction == null) {
+      return card.note ?? 'Карточка';
+    }
+
+    // Оставил совместимость со старым transaction.location.
+    // Если в твоей новой модели location уже нет, замени эту строку на:
+    // return transaction.merchant.isNotEmpty ? transaction.merchant : transaction.description;
+    return transaction.location;
+  }
+
+  String _transactionBottomSheetTitle(Transaction transaction) {
+    // Оставил совместимость со старым transaction.location.
+    // Если в новой модели location нет, замени на merchant/description.
+    return transaction.location;
   }
 
   String _formatDate(DateTime dateTime) {
@@ -145,15 +134,17 @@ class _KanbanScreenState extends State {
       'ноя',
       'дек',
     ];
+
     final day = dateTime.day.toString().padLeft(2, '0');
     final month = monthNames[dateTime.month];
     final hour = dateTime.hour.toString().padLeft(2, '0');
     final minute = dateTime.minute.toString().padLeft(2, '0');
+
     return '$day $month в $hour:$minute';
   }
 
   void _scrollToColumn(int index) {
-    final kanbanProvider = context.read();
+    final kanbanProvider = context.read<KanbanProvider>();
     final totalItems = kanbanProvider.columns.length + 1;
     final safeIndex = index.clamp(0, totalItems - 1);
 
@@ -176,8 +167,10 @@ class _KanbanScreenState extends State {
 
     final kanbanProvider = context.read<KanbanProvider>();
     final totalItems = kanbanProvider.columns.length + 1;
+
     final rawIndex = _scrollController.offset /
         ((_columnWidth + _columnSpacing) * _scale).clamp(1, double.infinity);
+
     final index = rawIndex.round().clamp(0, totalItems - 1);
 
     if (index != _currentColumnIndex) {
@@ -185,59 +178,35 @@ class _KanbanScreenState extends State {
     }
   }
 
-  void _addColumn() {
-    final title = _newColumnController.text.trim();
-    if (title.isEmpty) return;
-
-    context.read<KanbanProvider>().addColumn(title, const Color(0xFF1C1C1E));
-    _newColumnController.clear();
-    setState(() => _showAddColumn = false);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final colCount = context.read<KanbanProvider>().columns.length;
-      _scrollToColumn(colCount);
-    });
-  }
-
   void _toggleZoom() {
     final nextScale = _isZoomed ? 1.0 : 0.62;
+
     setState(() => _scale = nextScale);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _scrollToColumn(_currentColumnIndex);
+      if (mounted) {
+        _scrollToColumn(_currentColumnIndex);
+      }
     });
   }
 
-  void _toggleDeleteMode() {
-    setState(() {
-      _deleteMode = !_deleteMode;
-      if (!_deleteMode) _selectedCardIds.clear();
-    });
-  }
 
-  void _deleteSelectedCards() {
-    final kanbanProvider = context.read();
-    for (final cardId in _selectedCardIds) {
-      kanbanProvider.deleteCard(cardId);
-    }
-    setState(() {
-      _selectedCardIds.clear();
-      _deleteMode = false;
-    });
+  void _addColumn() {
+    showDialog(
+      context: context,
+      builder: (_) => const AddColumnDialog(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final kanbanProvider = context.watch();
-    final transactionProvider = context.watch();
-    final colors = Theme.of(context).extension()!;
-    final columns = kanbanProvider.columns;
-    final totalItems = columns.length + 1;
+    final kanbanProvider = context.watch<KanbanProvider>();
+    final transactionProvider = context.watch<TransactionProvider>();
+    final colors = Theme.of(context).extension<AppThemeColors>()!;
+    final isDark = context.watch<ThemeProvider>().isDark;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _syncTransactionsToUnsorted();
-    });
     final now = DateTime.now();
+
     const months = [
       '',
       'января',
@@ -251,17 +220,17 @@ class _KanbanScreenState extends State {
       'сентября',
       'октября',
       'ноября',
-      'декабря'
+      'декабря',
     ];
+
     return Scaffold(
-      backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.blue),
-          onPressed: context.pop,
+         elevation: 0,
+        leading: GestureDetector(
+            onTap: context.pop,
+            child: const Icon(Icons.arrow_back, color: AppColors.blue)
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,8 +241,32 @@ class _KanbanScreenState extends State {
             ),
           ],
         ),
-        // ─── Кнопка зума (⊖/⊕) как на фото справа ───────────────────────
         actions: [
+          // Кнопка обновления данных
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: GestureDetector(
+              onTap: () async {
+                await context.read<KanbanProvider>().loadColumns();
+              },
+              child: Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.07),
+                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                ),
+                child: const Icon(
+                  Icons.refresh,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ),
+          ),
+          // Кнопка zoom
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: GestureDetector(
@@ -299,55 +292,50 @@ class _KanbanScreenState extends State {
             ),
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: AppColors.blue.withOpacity(0.1)),
-        ),
       ),
       body: Stack(
         children: [
-          // Background image
-          colors == false
-              ? Positioned.fill(
-                  child: Image.asset(
-                    'assets/images/kanban_bg.png',
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : Positioned.fill(
-                  child: Image.asset(
-                    'assets/images/kanban_bg_dark.png',
-                    fit: BoxFit.cover,
-                  ),
-                ),
-          // Subtle dark overlay for readability
+          // Фоновая картинка — всегда видна, без чёрного перекрытия
           Positioned.fill(
             child: Container(
-              color: Colors.black.withOpacity(0.15),
+              color: isDark ? Colors.black : Colors.white,
+              child: Image.asset(
+                isDark
+                    ? 'assets/images/kanban_bg_dark.png'
+                    : 'assets/images/kanban_bg.png',
+                fit: BoxFit.cover,
+                color: null,
+                colorBlendMode: null,
+                   ),
             ),
           ),
-          // Content
           SafeArea(
+            top: false,
+            bottom: false,
             child: Column(
               children: [
-                // Custom AppBar
                 Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Container()),
-                // Kanban board — horizontal scroll
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Container(),
+                ),
+
                 Expanded(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ...kanbanProvider.columns.map(
-                        (column) => Padding(
-                          padding: const EdgeInsets.only(right: _columnSpacing),
+                            (column) => Padding(
+                          padding: const EdgeInsets.only(
+                            right: _columnSpacing,
+                          ),
                           child: SizedBox(
                             width: _columnWidth,
                             child: KanbanColumnWidget(
                               column: _mapColumnToModel(
-                                  column, transactionProvider),
+                                column,
+                                transactionProvider,
+                              ),
                               isDragTarget: _dragTargetId == column.id,
                               onDragHover: (columnId) {
                                 setState(() {
@@ -360,12 +348,16 @@ class _KanbanScreenState extends State {
                                   data.fromColumnId,
                                   column.id,
                                 );
+                                setState(() {
+                                  _dragTargetId = null;
+                                });
                               },
                               onAddCard: () => _addCardToColumn(column),
                             ),
                           ),
                         ),
                       ),
+
                       SizedBox(
                         height: 70,
                         width: _columnWidth,
@@ -373,7 +365,9 @@ class _KanbanScreenState extends State {
                           onTap: _addColumn,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                vertical: 12, horizontal: 12),
+                              vertical: 12,
+                              horizontal: 12,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.18),
                               borderRadius: BorderRadius.circular(14),
@@ -403,84 +397,26 @@ class _KanbanScreenState extends State {
           ),
         ],
       ),
-    );
-  }
 
-  void _addColumn() {
-    showDialog(
-      context: context,
-      builder: (context) => const AddColumnDialog(),
     );
-  }
-
-  KanbanColumnModel _mapColumnToModel(
-      KanbanColumn column, TransactionProvider transactionProvider) {
-    return KanbanColumnModel(
-      id: column.id,
-      title: column.title,
-      isSystem: false,
-      cards: column.card
-          .map((card) => _mapCardToModel(card, transactionProvider, column.id))
-          .toList(),
-    );
-  }
-
-  KanbanCardModel _mapCardToModel(KanbanCard card,
-      TransactionProvider transactionProvider, String columnId) {
-    Transaction? transaction;
-    if (card.transactionId != null) {
-      for (final item in transactionProvider.transactions) {
-        if (item.id == card.transactionId) {
-          transaction = item;
-          break;
-        }
-      }
-    }
-    return KanbanCardModel(
-      id: card.id,
-      place: transaction?.location ?? card.note ?? 'Карточка',
-      amount: transaction?.amount ?? 0,
-      date: _formatDate(transaction?.dateTime ?? card.createdAt),
-      columnId: columnId,
-    );
-  }
-
-  String _formatDate(DateTime dateTime) {
-    const monthNames = [
-      '',
-      'янв',
-      'фев',
-      'мар',
-      'апр',
-      'май',
-      'июн',
-      'июл',
-      'авг',
-      'сен',
-      'окт',
-      'ноя',
-      'дек',
-    ];
-    final day = dateTime.day.toString().padLeft(2, '0');
-    final month = monthNames[dateTime.month];
-    final hour = dateTime.hour.toString().padLeft(2, '0');
-    final minute = dateTime.minute.toString().padLeft(2, '0');
-    return '$day $month в $hour:$minute';
   }
 
   void _addCardToColumn(KanbanColumn column) {
-    final transactionProvider = context.read();
+    final transactionProvider = context.read<TransactionProvider>();
     final transactions = transactionProvider.transactions;
 
     final List<dynamic> items;
+
     if (column.id == 'all') {
       items = transactions;
     } else if (column.id == 'income') {
-      items =
-          transactions.where((t) => t.type == TransactionType.income).toList();
+      items = transactions
+          .where((transaction) => transaction.type == TransactionType.income)
+          .toList();
     } else if (column.id == 'expense') {
-      items =
-          transactions.where((t) => t.type == TransactionType.expense).toList();
+      items = transactions
+          .where((transaction) => transaction.type == TransactionType.expense)
+          .toList();
     } else {
       items = ['Новая заметка'];
     }
@@ -500,6 +436,7 @@ class _KanbanScreenState extends State {
             status: 'Новая',
             createdAt: DateTime.now(),
           );
+
           context.read<KanbanProvider>().addCardToColumn(column.id, card);
         },
       ),
@@ -511,18 +448,23 @@ class AddColumnDialog extends StatefulWidget {
   const AddColumnDialog({super.key});
 
   @override
-  State createState() => _AddColumnDialogState();
+  State<AddColumnDialog> createState() => _AddColumnDialogState();
 }
 
-class _AddColumnDialogState extends State {
-  final _controller = TextEditingController();
+class _AddColumnDialogState extends State<AddColumnDialog> {
+  final TextEditingController _controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: const Color(0xFF1C1C1E),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Text('Новый список', style: TextStyle(color: Colors.white)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      title: const Text(
+        'Новый список',
+        style: TextStyle(color: Colors.white),
+      ),
       content: TextField(
         controller: _controller,
         style: const TextStyle(color: Colors.white),
@@ -542,19 +484,29 @@ class _AddColumnDialogState extends State {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Отмена', style: TextStyle(color: Colors.white54)),
+          child: const Text(
+            'Отмена',
+            style: TextStyle(color: Colors.white54),
+          ),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.white,
             foregroundColor: Colors.black,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
           onPressed: () {
             final title = _controller.text.trim();
+
             if (title.isEmpty) return;
-            context.read().addColumn(title, const Color(0xFF1C1C1E));
+
+            context.read<KanbanProvider>().addColumn(
+              title,
+              const Color(0xFF1C1C1E),
+            );
+
             Navigator.of(context).pop();
           },
           child: const Text('Добавить'),
@@ -570,10 +522,9 @@ class _AddColumnDialogState extends State {
   }
 }
 
-//─── Add Card Bottom Sheet ────────────────────────────────────────────────────
 class AddCardBottomSheets extends StatelessWidget {
-  final List items;
-  final Function(dynamic) onCardAdded;
+  final List<dynamic> items;
+  final void Function(dynamic item) onCardAdded;
 
   const AddCardBottomSheets({
     super.key,
@@ -583,11 +534,15 @@ class AddCardBottomSheets extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppThemeColors>()!;
+
     return Container(
       height: MediaQuery.sizeOf(context).height * 0.7,
-      decoration: const BoxDecoration(
-        color: Color(0xFF1C1C1E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration:  BoxDecoration(
+        color:colors.background,
+        borderRadius:  const BorderRadius.vertical(
+          top: Radius.circular(20),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -614,43 +569,45 @@ class AddCardBottomSheets extends StatelessWidget {
             Expanded(
               child: items.isEmpty
                   ? const Center(
-                      child: Text(
-                        'Нет доступных элементов',
-                        style: TextStyle(color: Colors.white54),
-                      ),
-                    )
+                child: Text(
+                  'Нет доступных элементов',
+                  style: TextStyle(color: Colors.white54),
+                ),
+              )
                   : ListView.builder(
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white10,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: ListTile(
-                            title: Text(
-                              item
-                                  ? item.location
-                                  : item.toString(),
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                            subtitle: item is Transaction
-                                ? Text(
-                                    '${item.amount.toStringAsFixed(0)} UZS',
-                                    style:
-                                        const TextStyle(color: Colors.white54),
-                                  )
-                                : null,
-                            onTap: () {
-                              onCardAdded(item);
-                              Navigator.of(context).pop();
-                            },
-                          ),
-                        );
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final item = items[index];
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white10,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: ListTile(
+                      title: Text(
+                        item is Transaction
+                            ? item.location
+                            : item.toString(),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      subtitle: item is Transaction
+                          ? Text(
+                        '${item.amount.toStringAsFixed(0)} UZS',
+                        style: const TextStyle(
+                          color: Colors.white54,
+                        ),
+                      )
+                          : null,
+                      onTap: () {
+                        onCardAdded(item);
+                        Navigator.of(context).pop();
                       },
                     ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -667,28 +624,18 @@ Screen responsibility
 
 Screen: KanbanScreen
 
-
-
 Responsibility:
 
 - Shows the Kanban board for organizing transactions by columns/categories.
-
 - Allows users to create columns.
-
 - Allows users to add transactions or notes as Kanban cards.
-
 - Allows moving, updating and deleting cards through KanbanProvider.
-
-
 
 This screen must NOT:
 
 - Parse raw bank messages.
-
 - Work directly with local database.
-
 - Contain transaction analytics calculations.
-
 - Contain Share Intent import logic.
 
 --------------------------------------------------------------------------

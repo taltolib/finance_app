@@ -79,14 +79,11 @@ class KanbanColumnWidget extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           width: 280,
           decoration: BoxDecoration(
-            color: isDragTarget
-                ? KanbanUiColors.blue.withOpacity(0.08)
-                : colors.background,
+            color: colors.background,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isDragTarget
-                  ? KanbanUiColors.blue
-                  : KanbanUiColors.border,
+              color: colors.text.withOpacity(0.5),
+              width: 0.5
             ),
             boxShadow: isDragTarget
                 ? [
@@ -98,37 +95,41 @@ class KanbanColumnWidget extends StatelessWidget {
             ]
                 : [],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _ColumnHeader(
-                title: column.title,
-                count: column.cards.length,
-                totalAmount: totalAmount,
-                isSystem: column.isSystem,
-                onTap: () => _showColumnMenu(context),
-              ),
-              if (column.cards.length > 5)
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 380),
-                  child: _CardsList(
+          child: IntrinsicHeight(
+            child: Column(
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                _ColumnHeader(
+                  title: column.title,
+                  count: column.cards.length,
+                  totalAmount: totalAmount,
+                  isSystem: column.isSystem,
+                  onTap: () => _showColumnMenu(context),
+                ),
+                if (column.cards.length > 6)
+                   SizedBox(
+                    height: 420,
+                    child: _CardsList(
+                      column: column,
+                      onAddCard: onAddCard,
+                      shrinkWrap: false,
+                      deleteMode: deleteMode,
+                      selectedCardIds: selectedCardIds,
+                      onCardSelected: onCardSelected,
+                    ),
+                  )
+                else
+                // До 6 карточек — высота по содержимому (как Trello)
+                  _CardsList(
                     column: column,
                     onAddCard: onAddCard,
+                    shrinkWrap: true,
                     deleteMode: deleteMode,
                     selectedCardIds: selectedCardIds,
                     onCardSelected: onCardSelected,
                   ),
-                )
-              else
-                _CardsList(
-                  column: column,
-                  onAddCard: onAddCard,
-                  shrinkWrap: true,
-                  deleteMode: deleteMode,
-                  selectedCardIds: selectedCardIds,
-                  onCardSelected: onCardSelected,
-                ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -177,7 +178,7 @@ class _CardsList extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: isSelected
-                        ? KanbanUiColors.red
+                        ? AppColors.red
                         : Colors.transparent,
                     width: 2,
                   ),
@@ -193,7 +194,7 @@ class _CardsList extends StatelessWidget {
                           width: 18,
                           height: 18,
                           decoration: const BoxDecoration(
-                            color: KanbanUiColors.red,
+                            color: AppColors.red,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.check,
@@ -382,6 +383,7 @@ class _ColumnMenuSheetState extends State<_ColumnMenuSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppThemeColors>()!;
     return Container(
       padding: EdgeInsets.only(
         left: 20,
@@ -390,9 +392,9 @@ class _ColumnMenuSheetState extends State<_ColumnMenuSheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom + 50,
       ),
       decoration: BoxDecoration(
-        color: KanbanUiColors.bgCard,
+        color: colors.background,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        border: Border.all(color: KanbanUiColors.border),
+        border: Border.all(color:colors.text.withOpacity(0.5),width: 0.5),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -409,14 +411,14 @@ class _ColumnMenuSheetState extends State<_ColumnMenuSheet> {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(widget.column.title,
-                style: kanbanText(size: 18, weight: FontWeight.w700)),
+                style: AppFonts.mulish.s18w700(color: colors.text)),
           ),
           const SizedBox(height: 16),
           if (_showEditField) ...[
             TextField(
               controller: _controller,
               autofocus: true,
-              style: kanbanText(size: 14),
+              style:AppFonts.mulish.s14w400(color: colors.text),
               cursorColor: KanbanUiColors.blue,
               decoration: InputDecoration(
                 hintText: 'Новое название',
@@ -428,11 +430,11 @@ class _ColumnMenuSheetState extends State<_ColumnMenuSheet> {
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: KanbanUiColors.border),
+                  borderSide: BorderSide(color: colors.text.withOpacity(0.5)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: KanbanUiColors.blue),
+                  borderSide: const BorderSide(color: AppColors.blue),
                 ),
               ),
             ),
@@ -453,7 +455,7 @@ class _ColumnMenuSheetState extends State<_ColumnMenuSheet> {
                   if (newTitle.isNotEmpty) widget.onEdit(newTitle);
                 },
                 child: Text('Сохранить',
-                    style: kanbanText(size: 14, weight: FontWeight.w700)),
+                    style: AppFonts.mulish.s14w700(color: Colors.white)),
               ),
             ),
             const SizedBox(height: 8),
