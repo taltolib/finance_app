@@ -33,7 +33,7 @@ class InfoBotPage extends StatelessWidget {
         ),
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -42,9 +42,9 @@ class InfoBotPage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: colors.backgroundLight,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: colors.text.withOpacity(0.2),width: 0.5)
+                    color: colors.backgroundLight,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: colors.text.withOpacity(0.2),width: 0.5)
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,12 +83,12 @@ class InfoBotPage extends StatelessWidget {
                 onPressed: humoProvider.isChecking
                     ? null
                     : () async {
-                        final router = GoRouter.of(context);
-                        final connected = await humoProvider.checkBotStatus();
-                        if (connected) {
-                          router.go('/main');
-                        }
-                      },
+                  final router = GoRouter.of(context);
+                  final connected = await humoProvider.checkBotStatus();
+                  if (connected) {
+                    router.go('/main');
+                  }
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF25B4C7),
                   foregroundColor: Colors.white,
@@ -96,10 +96,10 @@ class InfoBotPage extends StatelessWidget {
                 ),
                 child: humoProvider.isChecking
                     ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(color: AppColors.blue, strokeWidth: 2),
-                      )
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(color: AppColors.blue, strokeWidth: 2),
+                )
                     :  Text('Проверить снова',style: AppFonts.mulish.s14w600(color: AppColors.textWhite),),
               ),
             ],
@@ -128,9 +128,9 @@ class _InstructionStep extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colors.backgroundLight,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: colors.text.withOpacity(0.2),width: 0.5)
+          color: colors.backgroundLight,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: colors.text.withOpacity(0.2),width: 0.5)
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
