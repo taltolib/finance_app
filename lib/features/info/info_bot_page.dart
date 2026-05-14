@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/theme/colors/app_colors.dart';
+
 class InfoBotPage extends StatelessWidget {
   const InfoBotPage({super.key});
 
@@ -17,7 +19,7 @@ class InfoBotPage extends StatelessWidget {
     final statusMessage = humoProvider.error ?? humoProvider.getErrorMessage();
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: colors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -26,8 +28,8 @@ class InfoBotPage extends StatelessWidget {
           style: AppFonts.mulish.s18w700(color: colors.text),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: colors.text),
-          onPressed: () => context.go('/main'),
+          icon: const Icon(Icons.arrow_back_ios, color: AppColors.blue),
+          onPressed: () => context.go('/auth/phone'),
         ),
       ),
       body: SafeArea(
@@ -42,6 +44,7 @@ class InfoBotPage extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: colors.backgroundLight,
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: colors.text.withOpacity(0.2),width: 0.5)
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,19 +61,19 @@ class InfoBotPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              _InstructionStep(
+              const _InstructionStep(
                 number: 1,
                 title: 'Откройте @HUMOcardbot',
                 description: 'Найдите бот в Telegram и начните чат с ним.',
               ),
               const SizedBox(height: 12),
-              _InstructionStep(
+              const _InstructionStep(
                 number: 2,
                 title: 'Отправьте команду /start',
                 description: 'Если бот запросит доступ, подтвердите его.',
               ),
               const SizedBox(height: 12),
-              _InstructionStep(
+              const _InstructionStep(
                 number: 3,
                 title: 'Подключите карту HUMO',
                 description: 'Следуйте инструкциям в боте для подключения карты.',
@@ -95,9 +98,9 @@ class InfoBotPage extends StatelessWidget {
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(color: AppColors.blue, strokeWidth: 2),
                       )
-                    : const Text('Проверить снова'),
+                    :  Text('Проверить снова',style: AppFonts.mulish.s14w600(color: AppColors.textWhite),),
               ),
             ],
           ),
@@ -127,6 +130,7 @@ class _InstructionStep extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.backgroundLight,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.text.withOpacity(0.2),width: 0.5)
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

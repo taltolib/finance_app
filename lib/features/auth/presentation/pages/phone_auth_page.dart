@@ -169,7 +169,7 @@ class _PhoneAuthPageState extends State {
                                 color: colors.background,
                                 borderRadius: BorderRadius.circular(15),
                                 border: Border.all(
-                                  color: Colors.white12,
+                                  color: colors.text.withOpacity(0.2),
                                 ),
                               ),
                               child: Text(
@@ -189,7 +189,7 @@ class _PhoneAuthPageState extends State {
                                   color: colors.background,
                                   borderRadius: BorderRadius.circular(15),
                                   border: Border.all(
-                                    color: Colors.white12,
+                                    color: colors.text.withOpacity(0.2),
                                   ),
                                 ),
                                 child: TextField(

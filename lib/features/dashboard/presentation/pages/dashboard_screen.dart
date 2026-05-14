@@ -25,9 +25,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TransactionProvider>().loadTransactions();
-      context.read<DashboardProvider>().loadCurrentMonth();
+      _loadData();
     });
+  }
+
+  Future<void> _loadData() async {
+    final dashboardProvider = context.read<DashboardProvider>();
+    final transactionProvider = context.read<TransactionProvider>();
+
+    // Загружаем данные dashboard и синхронизируем месяц в transactionProvider
+    await dashboardProvider.loadCurrentMonth();
+    transactionProvider.setMonth(dashboardProvider.selectedMonth);
+    await transactionProvider.loadTransactions();
+  }
+
+  /// Refresh: запрашиваем новые данные с бэкенда
+  Future<void> _onRefresh() async {
+    final dashboardProvider = context.read<DashboardProvider>();
+    final transactionProvider = context.read<TransactionProvider>();
+
+    await dashboardProvider.loadCurrentMonth();
+    transactionProvider.setMonth(dashboardProvider.selectedMonth);
+    // syncBeforeLoad = true — сначала синхронизирует с backend, потом загружает
+    await transactionProvider.loadTransactions(syncBeforeLoad: true);
+  }
+
+  /// Переключить на предыдущий месяц
+  Future<void> _previousMonth() async {
+    final dashboardProvider = context.read<DashboardProvider>();
+    final transactionProvider = context.read<TransactionProvider>();
+
+    await dashboardProvider.previousMonth();
+    transactionProvider.setMonth(dashboardProvider.selectedMonth);
+  }
+
+  /// Переключить на следующий месяц
+  Future<void> _nextMonth() async {
+    final dashboardProvider = context.read<DashboardProvider>();
+    final transactionProvider = context.read<TransactionProvider>();
+
+    await dashboardProvider.nextMonth();
+    transactionProvider.setMonth(dashboardProvider.selectedMonth);
   }
 
   @override
@@ -42,11 +80,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final currentBalance = summary?.balance ?? transactionProvider.currentBalance;
     final monthlyIncome = summary?.income ?? transactionProvider.totalIncome;
     final monthlyExpense = summary?.expense ?? transactionProvider.totalExpense;
+
+    // Транзакции фильтруются по выбранному месяцу (selectedMonth синхронизирован)
     final transactions = transactionProvider.currentMonthTransactions;
     final previewTransactions = transactions.take(_previewTransactionCount).toList();
 
     return Scaffold(
-
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -73,7 +112,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           SafeArea(
             child: RefreshIndicator(
-              onRefresh: () => dashboardProvider.loadCurrentMonth(),
+              onRefresh: _onRefresh,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -112,7 +151,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Expanded(
                           child: StatSummaryWidget(
                             title: 'Баланс',
-                            sum: transactionProvider.currentBalance.toString(),
+                            sum: currentBalance.toString(),
                             colorBackG: colors.backgroundLight,
                             titleColor: AppColors.blue,
                             sumColor: colors.text,
@@ -133,6 +172,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                     const SizedBox(height: 30),
+                    // ── Переключатель месяца ──────────────────────────────
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -142,7 +182,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             size: 24,
                             color: colors.text,
                           ),
-                          onPressed: dashboardProvider.previousMonth,
+                          onPressed: _previousMonth,
                         ),
                         Text(
                           DateFormat('MMMM yyyy', 'ru_RU')
@@ -155,11 +195,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             size: 24,
                             color: colors.text,
                           ),
-                          onPressed: dashboardProvider.nextMonth,
+                          onPressed: _nextMonth,
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
+                    // ── Заголовок "Последние транзакции" ─────────────────
                     Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
@@ -170,7 +211,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    if (transactions.isEmpty)
+                    // ── Список транзакций за выбранный месяц ─────────────
+                    if (transactionProvider.isLoading)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 60),
+                          child: CircularProgressIndicator(
+                            color: AppColors.blue,
+                          ),
+                        ),
+                      )
+                    else if (transactions.isEmpty)
                       Center(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
@@ -182,58 +233,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             style: AppFonts.mulish.s16w400(
                               color: colors.text.withOpacity(0.60),
                             ),
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       )
                     else ...[
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: previewTransactions.length,
-                        itemBuilder: (context, index) {
-                          final transaction = previewTransactions[index];
-
-                          return TransactionTile(
-                            transaction: transaction,
-                          );
-                        },
-                      ),
-                      if (transactions.length > previewTransactions.length) ...[
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(
-                                color: AppColors.blue.withOpacity(0.5),
-                                width: 1,
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: previewTransactions.length,
+                          itemBuilder: (context, index) {
+                            final transaction = previewTransactions[index];
+                            return TransactionTile(
+                              transaction: transaction,
+                            );
+                          },
+                        ),
+                        if (transactions.length > previewTransactions.length) ...[
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: AppColors.blue.withOpacity(0.5),
+                                  width: 1,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                backgroundColor:
+                                colors.backgroundLight.withOpacity(0.15),
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              backgroundColor:
-                                  colors.backgroundLight.withOpacity(0.15),
-                            ),
-                            onPressed: () {
-                              // Navigator.push(
-                              //   context,
-                              //   MaterialPageRoute(
-                              //     builder: (_) =>
-                              //     const ViewAllButton(onPressed:(){},isLoading: true,label: '',),
-                              //   ),
-                              // );
-                            },
-                            child: Text(
-                              'Смотреть все',
-                              style: AppFonts.mulish.s16w700(
-                                color: AppColors.blue,
+                              onPressed: () {
+                                // TODO: Navigate to full transactions list
+                              },
+                              child: Text(
+                                'Смотреть все',
+                                style: AppFonts.mulish.s16w700(
+                                  color: AppColors.blue,
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
                     const SizedBox(height: 24),
                   ],
                 ),

@@ -24,11 +24,15 @@ void main() async {
   await initializeDateFormatting('ru_RU', null);
   await ShareIntentService.initialize();
 
+  // Загружаем тему ДО запуска приложения, чтобы не было мигания
+  final themeProvider = ThemeProvider();
+  await themeProvider.loadTheme();
+
   final shareIntentService = ShareIntentService();
   final databaseHelper = DatabaseHelper.instance;
   final shareIntentRepository = ShareIntentRepositoryImpl(
     shareIntentService: shareIntentService,
-    databaseHelper: databaseHelper ,
+    databaseHelper: databaseHelper,
   );
 
   final getInitialSharedText = GetInitialSharedTextUseCase(shareIntentRepository);
@@ -38,6 +42,7 @@ void main() async {
 
   runApp(
     HumoTrackerApp(
+      themeProvider: themeProvider,
       getInitialSharedText: getInitialSharedText,
       listenShareIntent: listenShareIntent,
       parseSharedContent: parseSharedContent,
@@ -46,8 +51,8 @@ void main() async {
   );
 }
 
-
 class HumoTrackerApp extends StatelessWidget {
+  final ThemeProvider themeProvider;
   final GetInitialSharedTextUseCase getInitialSharedText;
   final ListenShareIntentUseCase listenShareIntent;
   final ParseSharedContentUseCase parseSharedContent;
@@ -55,6 +60,7 @@ class HumoTrackerApp extends StatelessWidget {
 
   const HumoTrackerApp({
     super.key,
+    required this.themeProvider,
     required this.getInitialSharedText,
     required this.listenShareIntent,
     required this.parseSharedContent,
@@ -65,14 +71,22 @@ class HumoTrackerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()..restoreSession()),
-        ChangeNotifierProvider<HumoConnectionProvider>(create: (_) => HumoConnectionProvider()),
-        ChangeNotifierProvider<DashboardProvider>(create: (_) => DashboardProvider()),
-        ChangeNotifierProvider<AnalyticsProvider>(create: (_) => AnalyticsProvider()..restorePeriodAndLoad()),
-        ChangeNotifierProvider<UserProfileProvider>(create: (_) => UserProfileProvider()),
-        ChangeNotifierProvider<TransactionProvider>(create: (_) => TransactionProvider()),
-        ChangeNotifierProvider<KanbanProvider>(create: (_) => KanbanProvider()),
-        ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider<AuthProvider>(
+            create: (_) => AuthProvider()..restoreSession()),
+        ChangeNotifierProvider<HumoConnectionProvider>(
+            create: (_) => HumoConnectionProvider()),
+        ChangeNotifierProvider<DashboardProvider>(
+            create: (_) => DashboardProvider()),
+        ChangeNotifierProvider<AnalyticsProvider>(
+            create: (_) => AnalyticsProvider()..restorePeriodAndLoad()),
+        ChangeNotifierProvider<UserProfileProvider>(
+            create: (_) => UserProfileProvider()),
+        ChangeNotifierProvider<TransactionProvider>(
+            create: (_) => TransactionProvider()),
+        ChangeNotifierProvider<KanbanProvider>(
+            create: (_) => KanbanProvider()),
+        // Передаём уже созданный themeProvider с загруженной темой
+        ChangeNotifierProvider<ThemeProvider>.value(value: themeProvider),
         ChangeNotifierProvider<OtpProvider>(create: (_) => OtpProvider()),
         BlocProvider(
           create: (_) => ShareIntentBloc(
