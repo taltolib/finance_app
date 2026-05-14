@@ -312,10 +312,6 @@ class _BoardViewState extends State<BoardView> {
             ),
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: KanbanUiColors.border),
-        ),
       ),
       // ─── FAB — удаление выбранных карточек ───────────────────────────────
       floatingActionButton: _deleteMode
@@ -336,14 +332,14 @@ class _BoardViewState extends State<BoardView> {
         child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
       body: Container(
-        color: KanbanUiColors.bg.withOpacity(0.72),
+        color:Colors.transparent,
         child: Column(
           children: [
             // ─── Delete mode banner ──────────────────────────────────────
             if (_deleteMode)
               Container(
                 width: double.infinity,
-                color: KanbanUiColors.red.withOpacity(0.12),
+                color: Colors.transparent,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(
                   children: [
@@ -586,24 +582,27 @@ class _AddColumnCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppThemeColors>()!;
+
     if (!showForm) {
       return SizedBox(
         height: 72,
         child: OutlinedButton(
           style: OutlinedButton.styleFrom(
-            foregroundColor: KanbanUiColors.textMuted,
-            side: BorderSide(color: Colors.white.withOpacity(0.18)),
+            foregroundColor: AppColors.blue,
+            side: BorderSide(color: AppColors.blue.withOpacity(0.18)),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16)),
-            backgroundColor: Colors.white.withOpacity(0.04),
+            backgroundColor: AppColors.blue.withOpacity(0.04),
           ),
           onPressed: onOpen,
           child: Text(
             '+ Добавить колонку',
+            
             style: kanbanText(
                 size: 14,
                 weight: FontWeight.w600,
-                color: KanbanUiColors.textMuted),
+                color: AppColors.blue),
           ),
         ),
       );
@@ -612,9 +611,9 @@ class _AddColumnCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: KanbanUiColors.bgColumn,
+        color: colors.background,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: KanbanUiColors.border),
+        border: Border.all(color: colors.text.withOpacity(0.05)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -622,7 +621,7 @@ class _AddColumnCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Text('Название колонки',
-                style: kanbanText(size: 13, color: KanbanUiColors.textDim)),
+                style: kanbanText(size: 13, color:colors.text)),
           ),
           const SizedBox(height: 10),
           TextField(
@@ -632,7 +631,7 @@ class _AddColumnCard extends StatelessWidget {
             cursorColor: KanbanUiColors.blue,
             decoration: InputDecoration(
               hintText: 'Например: Транспорт',
-              hintStyle: kanbanText(size: 14, color: KanbanUiColors.textMuted),
+              hintStyle: kanbanText(size: 14, color: colors.text.withOpacity(0.45)),
               filled: true,
               fillColor: Colors.white.withOpacity(0.07),
               contentPadding:
@@ -671,7 +670,7 @@ class _AddColumnCard extends StatelessWidget {
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: KanbanUiColors.textMuted,
-                    side: BorderSide(color: KanbanUiColors.border),
+                    side: BorderSide(color: colors.text.withOpacity(0.05)),
                     backgroundColor: Colors.white.withOpacity(0.07),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
@@ -679,7 +678,7 @@ class _AddColumnCard extends StatelessWidget {
                   onPressed: onCancel,
                   child: Text('Отмена',
                       style: kanbanText(
-                          size: 13, color: KanbanUiColors.textMuted)),
+                          size: 13, color:colors.text)),
                 ),
               ),
             ],

@@ -11,9 +11,17 @@ class UserProfileApiService {
       needsAuth: true,
     );
 
-    final body = response['data'] is Map<String, dynamic>
-        ? response['data'] as Map<String, dynamic>
-        : response;
+    // Backend может вернуть данные в разных обёртках:
+    // { "data": {...} }  /  { "user": {...} }  /  { ...напрямую... }
+    final Map<String, dynamic> body;
+    if (response['data'] is Map<String, dynamic>) {
+      body = response['data'] as Map<String, dynamic>;
+    } else if (response['user'] is Map<String, dynamic>) {
+      body = response['user'] as Map<String, dynamic>;
+    } else {
+      body = response;
+    }
+
     return UserProfileModel.fromJson(body);
   }
 }

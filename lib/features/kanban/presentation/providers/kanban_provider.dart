@@ -27,10 +27,14 @@ class KanbanProvider with ChangeNotifier {
   String? get error => _error;
   bool get isEmpty => _isEmpty;
 
-  String get boardId => _currentBoard?['id']?.toString() ?? _monthId(DateTime.now());
+  String get boardId =>
+      _currentBoard?['id']?.toString() ?? _monthId(DateTime.now());
 
   String get uncategorizedColumnId {
-    final system = _columns.where((c) => c.id.endsWith(':uncategorized') || c.id == 'uncategorized' || c.id == 'unsorted');
+    final system = _columns.where((c) =>
+    c.id.endsWith(':uncategorized') ||
+        c.id == 'uncategorized' ||
+        c.id == 'unsorted');
     return system.isNotEmpty ? system.first.id : '$boardId:uncategorized';
   }
 
@@ -111,7 +115,8 @@ class KanbanProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final created = await _apiService.createColumn(boardId: boardId, title: title);
+      final created =
+      await _apiService.createColumn(boardId: boardId, title: title);
       final index = _columns.indexWhere((c) => c.id == tempColumn.id);
       if (index != -1) {
         _columns[index] = KanbanColumn(
@@ -136,7 +141,8 @@ class KanbanProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _apiService.updateColumn(boardId: boardId, columnId: columnId, title: newTitle);
+      await _apiService.updateColumn(
+          boardId: boardId, columnId: columnId, title: newTitle);
     } catch (e) {
       _error = 'Колонка переименована локально, но backend вернул ошибку: $e';
       notifyListeners();
@@ -168,27 +174,40 @@ class KanbanProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateColumnTitle(String columnId, String newTitle) => renameColumn(columnId, newTitle);
+  Future<void> updateColumnTitle(String columnId, String newTitle) =>
+      renameColumn(columnId, newTitle);
 
   Future<void> addCardToColumn(String columnId, KanbanCard card) async {
     final column = _columns.firstWhere((c) => c.id == columnId);
-    if (column.cards.any((c) => c.transactionId == card.transactionId && card.transactionId != null)) return;
+    if (column.cards.any((c) =>
+    c.transactionId == card.transactionId &&
+        card.transactionId != null)) return;
     column.cards.add(card);
     await DatabaseHelper.instance.insertKanbanCard(card, columnId);
     notifyListeners();
   }
 
-  Future<void> moveCard(String cardId, String fromColumnId, String toColumnId) async {
+  /// Перемещение карточки между колонками.
+  /// ИСПРАВЛЕНО: всегда сохраняем в SQLite (и при успехе API, и при ошибке),
+  /// чтобы состояние не терялось при перезапуске приложения.
+  Future<void> moveCard(
+      String cardId, String fromColumnId, String toColumnId) async {
     final fromColumn = _columns.firstWhere((c) => c.id == fromColumnId);
     final card = fromColumn.cards.firstWhere((c) => c.id == cardId);
     final toColumn = _columns.firstWhere((c) => c.id == toColumnId);
 
+    // Обновляем UI немедленно (optimistic update)
     fromColumn.cards.remove(card);
     toColumn.cards.add(card);
     notifyListeners();
 
+    // ИСПРАВЛЕНИЕ: ВСЕГДА сохраняем в SQLite, независимо от результата API
+    await DatabaseHelper.instance.updateKanbanCard(card, toColumnId);
+
+    // Дополнительно пытаемся отправить на backend
     try {
-      final transactionId = card.transactionId ?? card.id.replaceFirst('tx_', '');
+      final transactionId =
+          card.transactionId ?? card.id.replaceFirst('tx_', '');
       await _apiService.moveCard(
         boardId: boardId,
         transactionId: transactionId,
@@ -196,8 +215,9 @@ class KanbanProvider with ChangeNotifier {
         toColumnId: toColumnId,
         newIndex: toColumn.cards.length - 1,
       );
-    } catch (_) {
-      await DatabaseHelper.instance.updateKanbanCard(card, toColumnId);
+    } catch (e) {
+      // Backend недоступен — данные уже сохранены в SQLite выше
+      _error = null; // не показываем ошибку пользователю, SQLite сохранил
     }
   }
 
@@ -237,17 +257,22 @@ class KanbanProvider with ChangeNotifier {
 
   List<KanbanColumn> _columnsFromBoard(Map<String, dynamic> board) {
     final rawColumns = board['columns'] as List? ?? const [];
-    return rawColumns.whereType<Map<String, dynamic>>().map((json) {
+    return rawColumns
+        .whereType<Map<String, dynamic>>()
+        .map((json) {
       final cards = (json['cards'] as List? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map((card) => KanbanCard(
-                id: card['id']?.toString() ?? 'tx_${card['transaction_id']}',
-                transactionId: card['transaction_id']?.toString(),
-                cardColor: const Color(0xFF1C1C1E),
-                note: (card['place'] ?? card['merchant'])?.toString(),
-                status: json['title']?.toString() ?? '',
-                createdAt: DateTime.tryParse('${card['datetime'] ?? card['date'] ?? ''}') ?? DateTime.now(),
-              ))
+        id: card['id']?.toString() ??
+            'tx_${card['transaction_id']}',
+        transactionId: card['transaction_id']?.toString(),
+        cardColor: const Color(0xFF1C1C1E),
+        note: (card['place'] ?? card['merchant'])?.toString(),
+        status: json['title']?.toString() ?? '',
+        createdAt: DateTime.tryParse(
+            '${card['datetime'] ?? card['date'] ?? ''}') ??
+            DateTime.now(),
+      ))
           .toList();
 
       return KanbanColumn(
@@ -256,8 +281,10 @@ class KanbanProvider with ChangeNotifier {
         color: Colors.blue,
         cards: cards,
       );
-    }).toList();
+    })
+        .toList();
   }
 
-  static String _monthId(DateTime date) => '${date.year}-${date.month.toString().padLeft(2, '0')}';
+  static String _monthId(DateTime date) =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}';
 }

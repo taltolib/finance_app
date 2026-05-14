@@ -13,6 +13,7 @@ class UserProfileProvider extends ChangeNotifier {
   UserProfileModel? get user => _user;
   String? get error => _error;
 
+  /// Загрузить профиль с backend /auth/me
   Future<void> loadProfile() async {
     _isLoading = true;
     _error = null;
@@ -28,9 +29,34 @@ class UserProfileProvider extends ChangeNotifier {
     }
   }
 
+  /// Обновить профиль из данных UserInfo, полученных при авторизации (verifyCode).
+  /// Используется как мгновенный pre-fill до загрузки /auth/me.
+  void updateFromAuthUser({
+    required String id,
+    String? phone,
+    String? name,
+    String? firstName,
+    String? lastName,
+    String? username,
+    String? photoBase64,
+  }) {
+    _user = UserProfileModel(
+      id: id,
+      phone: phone,
+      name: name,
+      firstName: firstName,
+      lastName: lastName,
+      username: username,
+      photoBase64: photoBase64,
+    );
+    notifyListeners();
+  }
+
+  /// Очистить профиль при logout
   void clear() {
     _user = null;
     _error = null;
+    _isLoading = false;
     notifyListeners();
   }
 }

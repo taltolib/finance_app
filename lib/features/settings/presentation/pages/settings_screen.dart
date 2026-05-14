@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'package:finance_app/core/state/providers/theme_provider.dart';
 import 'package:finance_app/core/theme/colors/app_colors.dart';
 import 'package:finance_app/core/theme/colors/theme_custom.dart';
+import 'package:finance_app/features/auth/presentation/providers/auth_provider.dart';
 import 'package:finance_app/features/profile/presentation/providers/user_profile_provider.dart';
 import 'package:finance_app/generated/fonts/app_fonts.dart';
 import 'package:finance_app/shared/widgets/custom_show_dialog.dart';
 import 'package:finance_app/shared/widgets/push_button.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../widget/settings_switch_tile.dart';
@@ -22,8 +24,12 @@ class SettingsScreen extends StatelessWidget {
     final colors = Theme.of(context).extension<AppThemeColors>()!;
 
     final profile = profileProvider.user;
-    final displayName = profile?.fullName.isNotEmpty == true ? profile!.fullName : 'Пользователь';
-    final userName = profile?.username;
+
+    // displayName: fullName → username → phone → 'Пользователь'
+    final displayName = profile?.displayName ?? 'Пользователь';
+    // displayUsername: @username → phone → ''
+    final displayUsername =
+    profile != null ? profile.displayUsername : null;
     final photoBase64 = profile?.photoBase64;
 
     return Scaffold(
@@ -49,8 +55,9 @@ class SettingsScreen extends StatelessWidget {
                 _ProfileHeader(
                   colors: colors,
                   nameUser: displayName,
-                  nikeName: userName,
+                  nikeName: displayUsername,
                   photoUrl: photoBase64,
+                  isLoading: profileProvider.isLoading,
                 ),
                 const SizedBox(height: 36),
                 Padding(
@@ -68,7 +75,7 @@ class SettingsScreen extends StatelessWidget {
                   child: _SettingsCard(
                     colors: colors,
                     children: [
-                       const SettingsSwitchTile(),
+                      const SettingsSwitchTile(),
                       Divider(
                         height: 0.5,
                         thickness: 1,
@@ -77,23 +84,42 @@ class SettingsScreen extends StatelessWidget {
                       _LogoutTile(
                         colors: colors,
                         onTap: () => customShowBottomSheetDialog(
-                            context,
-                            0.2,
-                            heightRadius: const Radius.circular(25),
-                            Container(),
-                            Text('Вы точно хотите выйти из аккаунта?', style: AppFonts.mulish.s16w400(color: colors.text)),
-                            PushButton(
-                                language: 'Выйти',
-                                colorText: colors.text,
-                                flagAsset: const SizedBox.shrink(),
-                                onTap: () {},
-                                isSelected: false,
-                              color: AppColors.red,
-                              colorShadow: AppColors.redDark,
-                              border: Border.all(color:AppColors.redDark,width: 1 ),
-                              borderRadius: 15,
-                              height: 80,
-                            )
+                          context,
+                          0.2,
+                          heightRadius: const Radius.circular(25),
+                          Container(),
+                          Text(
+                            'Вы точно хотите выйти из аккаунта?',
+                            style: AppFonts.mulish.s16w400(color: colors.text),
+                          ),
+                          PushButton(
+                            language: 'Выйти',
+                            colorText: colors.text,
+                            flagAsset: const SizedBox.shrink(),
+                            onTap: () async {
+                              // Закрываем диалог
+                              Navigator.of(context, rootNavigator: true).pop();
+
+                              final authProvider = context.read<AuthProvider>();
+                              final profileProv =
+                              context.read<UserProfileProvider>();
+
+                              await authProvider.logout();
+                              // Очищаем профиль после logout
+                              profileProv.clear();
+
+                              if (context.mounted) {
+                                context.go('/auth/phone');
+                              }
+                            },
+                            isSelected: false,
+                            color: AppColors.red,
+                            colorShadow: AppColors.redDark,
+                            border: Border.all(
+                                color: AppColors.redDark, width: 1),
+                            borderRadius: 15,
+                            height: 80,
+                          ),
                         ),
                       ),
                     ],
@@ -114,12 +140,14 @@ class _ProfileHeader extends StatelessWidget {
   final String? nikeName;
   final String? photoUrl;
   final AppThemeColors colors;
+  final bool isLoading;
 
   const _ProfileHeader({
     required this.colors,
     required this.nameUser,
     this.nikeName,
     this.photoUrl,
+    this.isLoading = false,
   });
 
   @override
@@ -134,57 +162,95 @@ class _ProfileHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Аватар
           Container(
             width: 54,
             height: 54,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: colors.text.withOpacity(0.75),
+                color: colors.text.withOpacity(0.5),
                 width: 1,
               ),
             ),
             child: ClipOval(
-              child: photoUrl != null
+              child: isLoading
+                  ? _buildAvatarPlaceholder(colors)
+                  : photoUrl != null && photoUrl!.isNotEmpty
                   ? Image.memory(
-                      base64Decode(photoUrl!),
-                      fit: BoxFit.cover,
-                      width: 54,
-                      height: 54,
-                    )
-                  : Icon(
-                      Icons.person_outline,
-                      color: colors.text.withOpacity(0.75),
-                      size: 24,
-                    ),
+                base64Decode(photoUrl!),
+                fit: BoxFit.cover,
+                width: 54,
+                height: 54,
+                errorBuilder: (context, error, stackTrace) =>
+                    _buildAvatarPlaceholder(colors),
+              )
+                  : _buildAvatarPlaceholder(colors),
             ),
           ),
           const SizedBox(width: 18),
+          // Имя и username / телефон
           Expanded(
-            child: Column(
+            child: isLoading
+                ? _buildTextSkeleton(colors)
+                : Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   nameUser,
-                  style: AppFonts.mulish.s16w700(
-                    color: colors.text,
-                  ),
+                  style: AppFonts.mulish.s16w700(color: colors.text),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  nikeName != null ? "@$nikeName" : '',
-                  style: AppFonts.mulish.s12w400(
-                    color: colors.text.withOpacity(0.45),
+                if (nikeName != null && nikeName!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    nikeName!,
+                    style: AppFonts.mulish.s12w400(
+                      color: colors.text.withOpacity(0.45),
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
+                ],
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAvatarPlaceholder(AppThemeColors colors) {
+    return Icon(
+      Icons.person_outline,
+      color: colors.text.withOpacity(0.75),
+      size: 24,
+    );
+  }
+
+  Widget _buildTextSkeleton(AppThemeColors colors) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 14,
+          width: 120,
+          decoration: BoxDecoration(
+            color: colors.text.withOpacity(0.10),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 11,
+          width: 80,
+          decoration: BoxDecoration(
+            color: colors.text.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -219,40 +285,6 @@ class _SettingsCard extends StatelessWidget {
     );
   }
 }
-
-// class _ThemeSwitchTile extends StatelessWidget {
-//   final AppThemeColors colors;
-//
-//   const _ThemeSwitchTile({
-//     required this.colors,
-//   });
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     final themeProvider = context.watch<ThemeProvider>();
-//     final isDark = themeProvider.isDark;
-//
-//     return Padding(
-//       padding: const EdgeInsets.symmetric(
-//         horizontal: 15,
-//         vertical: 15,
-//       ),
-//       child: Row(
-//         children: [
-//           Expanded(
-//             child: Text(
-//               'Тема',
-//               style: AppFonts.mulish.s16w500(
-//                 color: colors.text.withOpacity(0.70),
-//               ),
-//             ),
-//           ),
-//
-//         ],
-//       ),
-//     );
-//   }
-// }
 
 class _LogoutTile extends StatelessWidget {
   final AppThemeColors colors;
@@ -290,6 +322,3 @@ class _LogoutTile extends StatelessWidget {
     );
   }
 }
-
-
-

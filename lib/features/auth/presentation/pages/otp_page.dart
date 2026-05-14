@@ -8,6 +8,11 @@ import '../../../../core/theme/colors/theme_custom.dart';
 import '../../../../generated/fonts/app_fonts.dart';
 import '../../../../shared/widgets/push_button.dart';
 import '../../../../shared/widgets/top_snackbar.dart';
+import '../../../info/presentation/providers/humo_connection_provider.dart';
+import '../../../profile/presentation/providers/user_profile_provider.dart';
+import '../../../dashboard/presentation/providers/dashboard_provider.dart';
+import '../../../analytics/presentation/providers/analytics_provider.dart';
+import '../../../kanban/presentation/providers/kanban_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/otp_provider.dart';
 
@@ -27,6 +32,7 @@ class OtpPage extends StatefulWidget {
 
 class _OtpPageState extends State<OtpPage> {
   final TextEditingController _passwordController = TextEditingController();
+  bool _isCheckingBot = false;
 
   @override
   void dispose() {
@@ -46,31 +52,88 @@ class _OtpPageState extends State<OtpPage> {
     }
 
     if (code.length != OtpProvider.codeLength) {
-      TopSnackBar.show(context, 'Введите полный код из ${OtpProvider.codeLength} цифр');
+      TopSnackBar.show(
+          context, 'Введите полный код из ${OtpProvider.codeLength} цифр');
       return;
     }
 
-    final success = await authProvider.verifyCode(code, password: password.isEmpty ? null : password);
+    // 1. Проверяем OTP-код
+    final success = await authProvider.verifyCode(
+      code,
+      password: password.isEmpty ? null : password,
+    );
 
     if (!context.mounted) return;
 
-    if (success) {
-      TopSnackBar.show(context, 'Код подтверждён');
-      widget.onOTPVerified();
-    } else {
-      TopSnackBar.show(
-        context,
-        authProvider.error ?? 'Неверный код',
+    if (!success) {
+      TopSnackBar.show(context, authProvider.error ?? 'Неверный код');
+      return;
+    }
+
+    TopSnackBar.show(context, 'Код подтверждён');
+
+    // 2. Если backend вернул данные пользователя прямо в verifyCode — сразу
+    //    заполняем профиль. Это позволяет Settings показать имя/фото мгновенно,
+    //    ещё до загрузки /auth/me.
+    final userInfo = authProvider.user;
+    if (userInfo != null) {
+      context.read<UserProfileProvider>().updateFromAuthUser(
+        id: userInfo.id,
+        phone: userInfo.phoneNumber,
+        name: userInfo.name,
+        firstName: userInfo.firstName,
+        lastName: userInfo.lastName,
+        username: userInfo.username,
+        photoBase64: userInfo.photoBase64,
       );
+    }
+
+    // 3. Показываем загрузку пока проверяем бота
+    setState(() => _isCheckingBot = true);
+
+    try {
+      final humoProvider = context.read<HumoConnectionProvider>();
+      final isConnected = await humoProvider.checkBotStatus();
+
+      if (!context.mounted) return;
+
+      if (isConnected) {
+        // 4a. Бот подключён — загружаем данные и идём на главную
+        final profileProvider = context.read<UserProfileProvider>();
+        final dashboardProvider = context.read<DashboardProvider>();
+        final analyticsProvider = context.read<AnalyticsProvider>();
+        final kanbanProvider = context.read<KanbanProvider>();
+
+        // loadProfile перезапишет pre-fill из verifyCode полными данными /auth/me
+        await profileProvider.loadProfile();
+        await dashboardProvider.loadCurrentMonth();
+        await analyticsProvider.restorePeriodAndLoad();
+        await kanbanProvider.loadCurrentBoard();
+
+        if (!context.mounted) return;
+        context.go('/main');
+      } else {
+        // 4b. Бот не подключён — показываем инструкцию
+        if (!context.mounted) return;
+        context.go('/info');
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      // При ошибке проверки бота всё равно идём на /info
+      context.go('/info');
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingBot = false);
+      }
     }
   }
 
   @override
-  Widget  build(BuildContext context) {
+  Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AppThemeColors>()!;
     final authProv = context.watch<AuthProvider>();
     final otpProv = context.watch<OtpProvider>();
-    final isLoading = authProv.isVerifyingCode;
+    final isLoading = authProv.isVerifyingCode || _isCheckingBot;
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -78,11 +141,10 @@ class _OtpPageState extends State<OtpPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios,
-            color: colors.text,
-          ),
-          onPressed: () {
+          icon: Icon(Icons.arrow_back_ios, color: colors.text),
+          onPressed: isLoading
+              ? null
+              : () {
             if (context.canPop()) {
               context.pop();
             } else {
@@ -99,18 +161,14 @@ class _OtpPageState extends State<OtpPage> {
             const SizedBox(height: 40),
             Text(
               'Введите код',
-              style: AppFonts.mulish.s24w700(
-                color: colors.text,
-              ),
+              style: AppFonts.mulish.s24w700(color: colors.text),
             ),
             const SizedBox(height: 8),
             Text(
               widget.phone.isEmpty
                   ? 'Мы отправили код на ваш номер'
                   : 'Мы отправили код на ${widget.phone}',
-              style: AppFonts.mulish.s14w400(
-                color: Colors.grey,
-              ),
+              style: AppFonts.mulish.s14w400(color: Colors.grey),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
@@ -118,7 +176,7 @@ class _OtpPageState extends State<OtpPage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(
                 otpProv.controllers.length,
-                (i) => _OtpCell(
+                    (i) => _OtpCell(
                   controller: otpProv.controllers[i],
                   focusNode: otpProv.focusNodes[i],
                   onChanged: (v) => otpProv.onChanged(i, v),
@@ -130,7 +188,8 @@ class _OtpPageState extends State<OtpPage> {
             if (authProv.passwordRequired) ...[
               const SizedBox(height: 40),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
                   color: colors.background,
                   borderRadius: BorderRadius.circular(15),
@@ -141,34 +200,39 @@ class _OtpPageState extends State<OtpPage> {
                   enabled: !isLoading,
                   style: TextStyle(color: colors.text),
                   obscureText: true,
-                  decoration:  InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'Пароль',
-                    hintStyle:  AppFonts.mulish.s14w400(color: Colors.grey),
+                    hintStyle: AppFonts.mulish.s14w400(color: Colors.grey),
                     border: InputBorder.none,
                   ),
                 ),
               ),
             ],
             const SizedBox(height: 40),
+            if (_isCheckingBot) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Проверяем подключение бота...',
+                style: AppFonts.mulish.s14w400(color: Colors.grey),
+              ),
+              const SizedBox(height: 12),
+            ],
             PushButton(
               height: 80,
               color: AppColors.blue,
               colorShadow: AppColors.blueDark,
-              border: Border.all(
-                width: 2,
-                color: AppColors.blueDark,
-              ),
+              border: Border.all(width: 2, color: AppColors.blueDark),
               fontSize: 18,
               colorText: AppColors.textWhite,
               borderRadius: 15,
-              language: 'Подтвердить',
+              language: _isCheckingBot ? 'Проверка...' : 'Подтвердить',
               flagAsset: isLoading
                   ? const SizedBox(
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        backgroundColor: AppColors.textWhite,
-                      ),
-                    )
+                height: 20,
+                child: CircularProgressIndicator(
+                  backgroundColor: AppColors.textWhite,
+                ),
+              )
                   : const SizedBox.shrink(),
               isSelected: false,
               onTap: isLoading ? () {} : () => _handleVerify(context),
@@ -213,31 +277,22 @@ class _OtpCell extends StatelessWidget {
           FilteringTextInputFormatter.digitsOnly,
           LengthLimitingTextInputFormatter(1),
         ],
-        style: AppFonts.mulish.s24w700(
-          color: colors.text,
-        ),
+        style: AppFonts.mulish.s24w700(color: colors.text),
         decoration: InputDecoration(
           counterText: '',
           filled: true,
           fillColor: colors.background,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: AppColors.blue,
-            ),
+            borderSide: const BorderSide(color: AppColors.blue),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: Colors.white.withOpacity(0.12),
-            ),
+            borderSide: BorderSide(color: colors.text.withOpacity(0.2)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: AppColors.blue,
-              width: 2,
-            ),
+            borderSide: const BorderSide(color: AppColors.blue, width: 2),
           ),
         ),
         onChanged: onChanged,
